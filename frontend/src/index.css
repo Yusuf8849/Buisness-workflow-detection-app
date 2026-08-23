@@ -1,0 +1,823 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --transition-speed: 0.3s;
+}
+
+* {
+  transition: background-color var(--transition-speed) ease,
+              color var(--transition-speed) ease,
+              border-color var(--transition-speed) ease,
+              box-shadow var(--transition-speed) ease;
+}
+
+@layer base {
+  body {
+    background-color: #0a0e1a;
+    color: #e8edf5;
+    font-family: 'Inter', sans-serif;
+    overflow-x: hidden;
+    transition: background-image 0.5s ease, background-color var(--transition-speed) ease, color var(--transition-speed) ease;
+  }
+}
+
+/* ==========================================================================
+   PREMIUM LIGHT MODE THEME SYSTEM
+   Palette:
+     - Primary BG: #f0f4f8 (soft cool grey)
+     - Secondary BG: #ffffff (pure white for cards)
+     - Tertiary BG: #e8edf5 (hover states & secondary pills)
+     - Primary Text: #0f172a (dark navy, high contrast)
+     - Secondary Text: #334155 (slate for subtext)
+     - Muted Text: #64748b (labels & timestamps)
+     - Primary Accent: #00b4d8 (vibrant cyan with high contrast)
+     - Secondary Accent: #6d28d9 (rich royal purple)
+     - Success Accent: #059669 (deep emerald green)
+     - Warning Accent: #d97706 (warm amber)
+
+   Node Styles:
+     - Trigger Node: #10b981, white text, 0 4px 12px rgba(16,185,129,0.3), 2px solid rgba(255,255,255,0.5)
+     - Action Node: linear-gradient(135deg, #3b82f6, #2563eb), white text, 0 4px 12px rgba(59,130,246,0.3)
+     - Decision Node: linear-gradient(135deg, #f59e0b, #d97706), white text, 0 4px 12px rgba(245,158,11,0.3)
+     - Completion Node: linear-gradient(135deg, #7c3aed, #6d28d9), white text, 0 4px 12px rgba(124,58,237,0.3)
+
+   Edge Styles:
+     - Default Color: #94a3b8 (subtle grey)
+     - Active Edge: #3b82f6 (bright blue when animated)
+     - Hover: #00b4d8 (cyan glow)
+
+   Card Styles:
+     - Glassmorphism with white background
+     - Border: 1px solid rgba(0, 180, 216, 0.1)
+     - Box shadow: 0 4px 20px rgba(0, 0, 0, 0.06)
+     - Hover: 0 8px 32px rgba(0, 0, 0, 0.1)
+   ========================================================================== */
+
+html.light,
+html:not(.dark) body.light-mode {
+  color-scheme: light;
+}
+
+/* Backgrounds & Global Text */
+html.light body,
+html.light .min-h-screen,
+html.light .bg-\[\#0a0e1a\],
+html.light .bg-\[\#0a0e1a\]\/95,
+html.light .bg-\[\#0a0e1a\]\/90,
+html.light .bg-\[\#0a0e1a\]\/80 {
+  background-color: #f0f4f8 !important;
+  color: #0f172a !important;
+}
+
+/* Light Mode Card Styles */
+html.light .glass-card {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(0, 180, 216, 0.1) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06) !important;
+  color: #0f172a !important;
+}
+
+html.light .glass-card:hover,
+html.light .glass-card-hover:hover {
+  background: #ffffff !important;
+  border-color: rgba(0, 180, 216, 0.25) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1) !important;
+}
+
+html.light .glass-card-interactive {
+  background: rgba(255, 255, 255, 0.85) !important;
+  border: 1px solid rgba(0, 180, 216, 0.1) !important;
+  color: #0f172a !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06) !important;
+}
+
+html.light .glass-card-interactive:hover {
+  background: #e8edf5 !important;
+  border-color: rgba(0, 180, 216, 0.35) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Light Mode Node Specific Overrides */
+html.light .trigger-node {
+  background: #10b981 !important;
+  color: #ffffff !important;
+  border: 2px solid rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3) !important;
+}
+
+html.light .action-node {
+  background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+}
+
+html.light .decision-node > div {
+  background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3) !important;
+}
+
+html.light .completion-node {
+  background: linear-gradient(135deg, #7c3aed, #6d28d9) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3) !important;
+}
+
+/* Header & Footer */
+html.light header {
+  background: rgba(240, 244, 248, 0.85) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border-bottom: 1px solid rgba(0, 180, 216, 0.1) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04) !important;
+}
+
+html.light footer {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-top: 1px solid rgba(0, 180, 216, 0.1) !important;
+  color: #334155 !important;
+}
+
+/* Typography Overrides for Light Mode */
+html.light .text-\[\#e8edf5\],
+html.light .text-slate-100 {
+  color: #0f172a !important;
+}
+
+html.light .text-slate-200 {
+  color: #1e293b !important;
+}
+
+html.light .text-slate-300 {
+  color: #334155 !important;
+}
+
+html.light .text-slate-400,
+html.light .text-slate-500 {
+  color: #64748b !important;
+}
+
+/* Primary Accents & Buttons */
+html.light .text-\[\#00d4ff\],
+html.light .text-cyan-400 {
+  color: #00b4d8 !important;
+}
+
+html.light .text-\[\#7c3aed\],
+html.light .text-purple-400 {
+  color: #6d28d9 !important;
+}
+
+html.light .text-\[\#10b981\],
+html.light .text-emerald-400 {
+  color: #059669 !important;
+}
+
+html.light .text-\[\#f59e0b\],
+html.light .text-amber-400 {
+  color: #d97706 !important;
+}
+
+html.light .glass-button-primary {
+  background: linear-gradient(135deg, #00b4d8 0%, #0284c7 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 20px rgba(0, 180, 216, 0.35) !important;
+}
+
+html.light .glass-button-primary:hover {
+  filter: brightness(1.08) !important;
+  box-shadow: 0 6px 28px rgba(0, 180, 216, 0.45) !important;
+}
+
+html.light .glass-button-purple {
+  background: linear-gradient(135deg, #6d28d9 0%, #4f46e5 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 20px rgba(109, 40, 217, 0.25) !important;
+}
+
+/* Light Surface Pills & Overlays */
+html.light .bg-white\/\[0\.02\],
+html.light .bg-white\/\[0\.03\],
+html.light .bg-white\/\[0\.04\],
+html.light .bg-white\/\[0\.05\],
+html.light .bg-white\/\[0\.06\],
+html.light .bg-white\/\[0\.08\] {
+  background-color: rgba(15, 23, 42, 0.04) !important;
+}
+
+html.light .border-white\/\[0\.06\],
+html.light .border-white\/\[0\.08\],
+html.light .border-white\/\[0\.1\],
+html.light .border-white\/\[0\.12\],
+html.light .border-white\/\[0\.15\] {
+  border-color: rgba(0, 180, 216, 0.1) !important;
+}
+
+/* Inputs, Textareas, and Dropdowns in Light Mode */
+html.light input,
+html.light textarea,
+html.light select {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: rgba(0, 180, 216, 0.2) !important;
+}
+
+html.light input::placeholder,
+html.light textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* React Flow Canvas in Light Mode */
+html.light .react-flow__pane {
+  background-color: #f0f4f8 !important;
+}
+
+/* Edge Styles in Light Mode: #94a3b8 subtle grey, #3b82f6 active, #00b4d8 hover */
+html.light .react-flow__edge-path {
+  stroke: #94a3b8;
+  stroke-width: 2.5px;
+}
+
+html.light .react-flow__edge.animated .react-flow__edge-path,
+html.light .react-flow__edge[data-testid*="active"] .react-flow__edge-path {
+  stroke: #3b82f6 !important;
+}
+
+html.light .react-flow__edge:hover .react-flow__edge-path,
+html.light .react-flow__edge.selected .react-flow__edge-path {
+  stroke: #00b4d8 !important;
+  stroke-width: 3.5px !important;
+  filter: drop-shadow(0 0 8px rgba(0, 180, 216, 0.5)) !important;
+}
+
+html.light .react-flow__handle {
+  background: #00b4d8 !important;
+  border: 2.5px solid #ffffff !important;
+  box-shadow: 0 0 8px rgba(0, 180, 216, 0.4) !important;
+}
+
+html.light .react-flow__node {
+  border-radius: 16px;
+}
+
+/* Light Mode Subtle Glows */
+html.light .glow-cyan {
+  box-shadow: 0 0 24px rgba(0, 180, 216, 0.2) !important;
+}
+
+html.light .glow-purple {
+  box-shadow: 0 0 24px rgba(109, 40, 217, 0.15) !important;
+}
+
+html.light .glow-green {
+  box-shadow: 0 0 24px rgba(5, 150, 105, 0.2) !important;
+}
+
+html.light .glow-amber {
+  box-shadow: 0 0 24px rgba(217, 119, 6, 0.2) !important;
+}
+
+html.light .pulse-glow-card {
+  box-shadow: 0 0 20px rgba(0, 180, 216, 0.2) !important;
+  border-color: rgba(0, 180, 216, 0.2) !important;
+}
+
+/* Light Mode Ambient Orbs */
+html.light .animate-orb-float-1 {
+  background-color: rgba(0, 180, 216, 0.1) !important;
+}
+
+html.light .animate-orb-float-2 {
+  background-color: rgba(109, 40, 217, 0.08) !important;
+}
+
+html.light .animate-orb-float-3 {
+  background-color: rgba(232, 237, 245, 0.6) !important;
+}
+
+/* Scrollbars in Light Mode */
+html.light ::-webkit-scrollbar-track {
+  background: #f0f4f8 !important;
+}
+
+html.light ::-webkit-scrollbar-thumb {
+  background: #cbd5e1 !important;
+}
+
+html.light ::-webkit-scrollbar-thumb:hover {
+  background: #00b4d8 !important;
+}
+
+/* Global Smooth Theme Transition */
+body, header, nav, .glass-card, .glass-card-interactive, footer, input, textarea, select {
+  transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
+}
+
+/* Glassmorphism System */
+@layer components {
+  .glass-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+  }
+
+  .glass-card-hover {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .glass-card-hover:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.16);
+    box-shadow: 0 12px 40px 0 rgba(0, 212, 255, 0.12);
+  }
+
+  .glass-card-interactive {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    transition: all 0.25s ease;
+  }
+
+  .glass-card-interactive:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(0, 212, 255, 0.4);
+    box-shadow: 0 0 25px rgba(0, 212, 255, 0.2);
+  }
+
+  .glass-button-primary {
+    background: linear-gradient(135deg, #00d4ff 0%, #2563eb 100%);
+    color: #0a0e1a;
+    font-weight: 700;
+    border-radius: 16px;
+    box-shadow: 0 0 25px rgba(0, 212, 255, 0.35);
+    transition: all 0.25s ease;
+  }
+
+  .glass-button-primary:hover {
+    filter: brightness(1.15);
+    box-shadow: 0 0 35px rgba(0, 212, 255, 0.55);
+  }
+
+  .glass-button-purple {
+    background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+    color: #ffffff;
+    font-weight: 700;
+    border-radius: 16px;
+    box-shadow: 0 0 25px rgba(124, 58, 237, 0.35);
+    transition: all 0.25s ease;
+  }
+
+  .glass-button-purple:hover {
+    filter: brightness(1.15);
+    box-shadow: 0 0 35px rgba(124, 58, 237, 0.55);
+  }
+
+  /* Micro-Interactions: Card Lift & Button Scale */
+  .card-lift {
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease;
+  }
+
+  .card-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 40px 0 rgba(0, 212, 255, 0.16);
+    border-color: rgba(0, 212, 255, 0.3);
+  }
+
+  .button-scale {
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), filter 0.2s ease;
+  }
+
+  .button-scale:hover {
+    transform: scale(1.04);
+  }
+
+  .button-scale:active {
+    transform: scale(0.98);
+  }
+
+  /* Hardware Acceleration & Responsive Performance */
+  .will-change-transform {
+    will-change: transform;
+  }
+
+  .will-change-opacity {
+    will-change: opacity;
+  }
+
+  .will-change-composite {
+    will-change: transform, opacity;
+  }
+
+  .touch-target-min {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .link-gradient-underline {
+    position: relative;
+    text-decoration: none;
+    transition: color 0.2s ease;
+  }
+
+  .link-gradient-underline::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 0%;
+    height: 2px;
+    background: linear-gradient(90deg, #00d4ff, #7c3aed);
+    border-radius: 9999px;
+    transition: width 0.28s ease-in-out;
+  }
+
+  .link-gradient-underline:hover::after {
+    width: 100%;
+  }
+
+  /* Shimmer Skeleton Animation */
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+
+  .shimmer-effect {
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.03) 0%,
+      rgba(255, 255, 255, 0.1) 50%,
+      rgba(255, 255, 255, 0.03) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.8s infinite;
+  }
+
+  /* Cinematic Gradient Text Wave Animation (cyan → purple → magenta) */
+  @keyframes gradientWave {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+
+  .gradient-text-wave {
+    background: linear-gradient(
+      270deg,
+      #00d4ff 0%,
+      #38bdf8 25%,
+      #7c3aed 50%,
+      #ec4899 75%,
+      #00d4ff 100%
+    );
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: gradientWave 5s ease infinite;
+  }
+
+  /* Subtle Glowing Border Pulse for Stat Cards */
+  @keyframes pulseGlow {
+    0%, 100% {
+      box-shadow: 0 0 15px rgba(0, 212, 255, 0.15);
+      border-color: rgba(0, 212, 255, 0.25);
+    }
+    50% {
+      box-shadow: 0 0 28px rgba(0, 212, 255, 0.4);
+      border-color: rgba(0, 212, 255, 0.55);
+    }
+  }
+
+  .pulse-glow-card {
+    animation: pulseGlow 3.5s ease-in-out infinite;
+  }
+
+  /* Heartbeat Animation for AI Avatar */
+  @keyframes heartbeatPulse {
+    0%, 100% {
+      transform: scale(1);
+      box-shadow: 0 0 25px rgba(0, 212, 255, 0.4), 0 0 45px rgba(124, 58, 237, 0.25);
+    }
+    14% {
+      transform: scale(1.12);
+      box-shadow: 0 0 40px rgba(0, 212, 255, 0.8), 0 0 65px rgba(124, 58, 237, 0.6);
+    }
+    28% {
+      transform: scale(1.04);
+      box-shadow: 0 0 30px rgba(0, 212, 255, 0.5), 0 0 50px rgba(124, 58, 237, 0.35);
+    }
+    42% {
+      transform: scale(1.15);
+      box-shadow: 0 0 45px rgba(0, 212, 255, 0.9), 0 0 75px rgba(124, 58, 237, 0.7);
+    }
+    70% {
+      transform: scale(1);
+      box-shadow: 0 0 25px rgba(0, 212, 255, 0.4), 0 0 45px rgba(124, 58, 237, 0.25);
+    }
+  }
+
+  .animate-heartbeat {
+    animation: heartbeatPulse 1.8s ease-in-out infinite;
+  }
+
+  /* 2. Gradient Flow Animations */
+  @keyframes gradientFlow {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+
+  .gradient-animated-btn {
+    background: linear-gradient(135deg, #00d4ff, #7c3aed, #10b981, #00d4ff);
+    background-size: 250% 250%;
+    animation: gradientFlow 4s ease infinite;
+  }
+
+  .gradient-animated-card {
+    position: relative;
+    background: rgba(10, 14, 26, 0.85);
+    border: 1px solid transparent;
+    background-clip: padding-box;
+  }
+
+  .gradient-animated-card::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: 16px;
+    padding: 1px;
+    background: linear-gradient(135deg, #00d4ff, #7c3aed, #10b981, #00d4ff);
+    background-size: 250% 250%;
+    animation: gradientFlow 4s ease infinite;
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  .gradient-animated-text {
+    background: linear-gradient(135deg, #00d4ff, #7c3aed, #38bdf8, #10b981);
+    background-size: 200% 200%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: gradientFlow 3s ease infinite;
+  }
+
+  /* 3. Fluid Typography */
+  .fluid-h1 {
+    font-size: clamp(2rem, 5vw + 1rem, 3.75rem);
+    line-height: 1.1;
+    letter-spacing: -0.025em;
+  }
+
+  .fluid-h2 {
+    font-size: clamp(1.5rem, 3.5vw + 0.5rem, 2.5rem);
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+
+  .fluid-h3 {
+    font-size: clamp(1.2rem, 2.2vw + 0.3rem, 1.875rem);
+    line-height: 1.25;
+  }
+
+  .fluid-body {
+    font-size: clamp(0.875rem, 1vw + 0.25rem, 1.05rem);
+    line-height: 1.6;
+  }
+
+  /* 4. Color Refined Glow Effects */
+  .glow-cyan {
+    box-shadow: 0 0 25px rgba(0, 212, 255, 0.45);
+    text-shadow: 0 0 12px rgba(0, 212, 255, 0.6);
+  }
+
+  .glow-purple {
+    box-shadow: 0 0 25px rgba(124, 58, 237, 0.45);
+    text-shadow: 0 0 12px rgba(124, 58, 237, 0.6);
+  }
+
+  .glow-green {
+    box-shadow: 0 0 25px rgba(16, 185, 129, 0.45);
+    text-shadow: 0 0 12px rgba(16, 185, 129, 0.6);
+  }
+
+  .glow-amber {
+    box-shadow: 0 0 25px rgba(245, 158, 11, 0.45);
+    text-shadow: 0 0 12px rgba(245, 158, 11, 0.6);
+  }
+
+  /* Pulsing Glows for 'AI Active' States */
+  @keyframes aiActiveGlow {
+    0%, 100% {
+      box-shadow: 0 0 15px rgba(0, 212, 255, 0.4), 0 0 30px rgba(124, 58, 237, 0.2);
+      border-color: rgba(0, 212, 255, 0.6);
+    }
+    50% {
+      box-shadow: 0 0 35px rgba(0, 212, 255, 0.8), 0 0 50px rgba(124, 58, 237, 0.6);
+      border-color: rgba(124, 58, 237, 0.9);
+    }
+  }
+
+  .ai-active-pulse {
+    animation: aiActiveGlow 2.4s ease-in-out infinite;
+  }
+
+  /* Ripple Wave Animation for Buttons */
+  @keyframes rippleEffect {
+    0% {
+      transform: scale(0);
+      opacity: 0.6;
+    }
+    100% {
+      transform: scale(4);
+      opacity: 0;
+    }
+  }
+
+  .animate-ripple {
+    animation: rippleEffect 0.65s ease-out forwards;
+  }
+}
+
+/* Custom Cyber Glow Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0a0e1a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1a1f36;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #00d4ff;
+}
+
+/* React Flow Base Defaults */
+.react-flow__pane {
+  cursor: grab;
+}
+
+.react-flow__pane:active {
+  cursor: grabbing;
+}
+
+.react-flow__handle {
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+  z-index: 10;
+}
+
+.react-flow__handle:hover {
+  transform: scale(1.4);
+}
+
+/* Node Pop-In Animation from Center */
+@keyframes nodePopIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.65);
+  }
+  70% {
+    transform: scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-node-pop {
+  animation: nodePopIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Node Drop with Gravity & Elastic Bounce on Auto-Layout */
+@keyframes nodeDropBounce {
+  0% {
+    opacity: 0;
+    transform: translateY(-70px) scale(0.85);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(12px) scale(1.03);
+  }
+  80% {
+    opacity: 1;
+    transform: translateY(-6px) scale(0.99);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-node-drop {
+  animation: nodeDropBounce 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Connected Node Synchronized Pulse */
+@keyframes connectedPulse {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(0, 212, 255, 0.3);
+    border-color: rgba(0, 212, 255, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 35px rgba(0, 212, 255, 0.8), 0 0 60px rgba(124, 58, 237, 0.4);
+    border-color: rgba(0, 212, 255, 0.9);
+  }
+}
+
+.connected-node-pulse {
+  animation: connectedPulse 1.5s ease-in-out infinite;
+}
+
+/* Radar Spinning Entrance */
+@keyframes radarSpin {
+  0% {
+    transform: rotate(0deg) scale(0.85);
+    opacity: 0;
+  }
+  50% {
+    transform: rotate(180deg) scale(1.02);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-radar-spin {
+  animation: radarSpin 1.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Heatmap Red Zone Pulse */
+@keyframes heatmapPulse {
+  0%, 100% {
+    fill: rgba(244, 63, 94, 0.25);
+    filter: drop-shadow(0 0 8px rgba(244, 63, 94, 0.5));
+  }
+  50% {
+    fill: rgba(244, 63, 94, 0.7);
+    filter: drop-shadow(0 0 22px rgba(244, 63, 94, 0.9));
+  }
+}
+
+.animate-heatmap-pulse {
+  animation: heatmapPulse 1.8s ease-in-out infinite;
+}
+
+/* Crumble / Shatter Collapse for As-Is Bars */
+@keyframes barCrumble {
+  0% {
+    transform: scaleX(1);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scaleX(0.7) skewX(-6deg);
+    filter: brightness(1.4) drop-shadow(0 0 8px rgba(244, 63, 94, 0.8));
+  }
+  100% {
+    transform: scaleX(1);
+    filter: brightness(1);
+  }
+}
+
+.animate-bar-crumble {
+  animation: barCrumble 0.8s ease-out forwards;
+}

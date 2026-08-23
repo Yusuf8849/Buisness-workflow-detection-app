@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+    <title>FlowIntel.AI — Business Workflow Detection & Diagram Generation</title>
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="AI that discovers hidden business workflows in natural language, SOP documents, and procedures — and transforms them into interactive DAG diagrams." />
+    <meta name="keywords" content="AI workflow detection, business process diagram, DAG generator, process intelligence, straight-through processing, STP, SOP to diagram, React Flow, BPMN alternative" />
+    <meta name="author" content="FlowIntel.AI Team" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://flowintel.ai" />
+
+    <!-- Open Graph (Facebook, LinkedIn, Discord) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="FlowIntel.AI" />
+    <meta property="og:title" content="FlowIntel.AI - Turn Business Complexity Into Clarity" />
+    <meta property="og:description" content="AI that discovers hidden business workflows in natural language" />
+    <meta property="og:image" content="/og-image.jpg" />
+    <meta property="og:url" content="https://flowintel.ai" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="FlowIntel.AI" />
+    <meta name="twitter:description" content="AI-powered workflow detection" />
+    <meta name="twitter:image" content="/og-image.jpg" />
+
+    <!-- PWA & Mobile Web App -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#00d4ff" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+    <!-- Asset Preload & Font Preconnects -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+    <!-- Schema.org JSON-LD Structured Data: SoftwareApplication -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "FlowIntel.AI",
+        "description": "Business Workflow Detection & Diagram Generation",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Web",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD",
+          "name": "Free Demo"
+        },
+        "featureList": [
+          "Unstructured natural language to DAG workflow generation",
+          "Interactive React Flow dynamic studio canvas",
+          "Real-time 3D neural AST topology visualizer",
+          "Latency hotspot and bottleneck risk diagnostics",
+          "Straight-Through Processing (STP) auto-optimization"
+        ]
+      }
+    </script>
+
+    <!-- Schema.org JSON-LD Structured Data: HowTo -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "HowTo",
+        "name": "How to Detect and Generate Business Workflows from Unstructured Text",
+        "description": "Step-by-step procedure used by FlowIntel.AI to convert messy SOP documents into mathematical DAG diagrams.",
+        "step": [
+          {
+            "@type": "HowToStep",
+            "name": "Ingest Business Description",
+            "text": "Paste natural language requirements or SOP text into the discovery prompt."
+          },
+          {
+            "@type": "HowToStep",
+            "name": "Entity & Schema Extraction",
+            "text": "AI extracts actors, actions, validation gates, and MongoDB target collections."
+          },
+          {
+            "@type": "HowToStep",
+            "name": "DAG Topology Construction",
+            "text": "AI constructs an interactive Directed Acyclic Graph with guaranteed 0 cycles."
+          },
+          {
+            "@type": "HowToStep",
+            "name": "Execute and Optimize",
+            "text": "Simulate STP optimization to reduce cycle delays by up to 94%."
+          }
+        ]
+      }
+    </script>
+
+    <!-- Schema.org JSON-LD Structured Data: FAQPage -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is FlowIntel.AI?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "FlowIntel.AI is an autonomous AI agent system designed to detect and generate executable Directed Acyclic Graph (DAG) diagrams from unstructured natural language business descriptions."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How does FlowIntel.AI guarantee zero cycles in DAGs?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "FlowIntel.AI uses an integrated topological sort engine that isolates cyclic exception loops into explicit error-handling paths, ensuring the core pipeline always executes without deadlocks."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can I export workflows to other formats?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes, FlowIntel.AI supports one-click export to high-resolution PNG, vector PDF, and structured JSON schemas ready for CI/CD and API pipelines."
+            }
+          }
+        ]
+      }
+    </script>
+  </head>
+  <body class="bg-[#0a0e1a] text-[#e8edf5] min-h-screen overflow-x-hidden antialiased selection:bg-[#00d4ff]/30 selection:text-[#00d4ff]">
+    <noscript>
+      <div style="padding: 2rem; text-align: center; color: #fff; background: #0a0e1a;">
+        <h1>FlowIntel.AI requires JavaScript</h1>
+        <p>Please enable JavaScript in your browser to experience the 3D Neural Workflow Engine and interactive DAG canvas.</p>
+      </div>
+    </noscript>
+    
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

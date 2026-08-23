@@ -1,0 +1,18 @@
+{
+  "short_name": "FlowIntel.AI",
+  "name": "FlowIntel AI — AI Business Workflow Detection & Diagram Generation",
+  "description": "Production-quality AI process intelligence platform for business workflow detection, diagram generation, and Straight-Through Processing.",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192 512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0a0e1a",
+  "theme_color": "#00d4ff",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "categories": ["business", "productivity", "utilities"]
+}
