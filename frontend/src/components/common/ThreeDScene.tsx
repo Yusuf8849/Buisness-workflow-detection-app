@@ -3,6 +3,7 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Html, Float, Grid, Line } from '@react-three/drei';
 import * as THREE from 'three';
 import { Users, Zap, GitFork, FileText, CheckCircle2, AlertTriangle, ArrowRight, Activity, Sparkles, Layers } from 'lucide-react';
+import { ElasticMesh } from './ElasticMesh';
 
 export interface SceneNode {
   id: string;
@@ -453,6 +454,9 @@ export const ThreeDScene: React.FC<ThreeDSceneProps> = memo(({
 
   return (
     <div className="relative w-full h-[600px] rounded-3xl overflow-hidden glass-card border border-white/[0.08] shadow-2xl bg-[#0a0e1a]">
+      {/* Elastic Mesh Interactive Background Layer */}
+      <ElasticMesh color1="#00d4ff" color2="#7c3aed" opacity={0.18} />
+
       {/* 3D Canvas */}
       <Canvas
         camera={{ position: [0, 2, 22], fov: 50 }}

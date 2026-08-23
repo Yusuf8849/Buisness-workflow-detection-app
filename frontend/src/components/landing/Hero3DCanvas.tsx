@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, memo } from 'react';
 import * as THREE from 'three';
+import { ElasticMesh } from '../common/ElasticMesh';
 
 interface ProcessNode3D {
   mesh: THREE.Mesh;
@@ -187,6 +188,9 @@ export const Hero3DCanvas: React.FC = memo(() => {
 
   return (
     <div className="relative w-full h-[580px] rounded-3xl overflow-hidden glass-card border border-white/[0.08] shadow-2xl">
+      {/* Elastic Mesh Interactive Background Layer */}
+      <ElasticMesh color1="#00d4ff" color2="#7c3aed" opacity={0.18} />
+
       {/* Three.js canvas mount point */}
       <div ref={mountRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
 
