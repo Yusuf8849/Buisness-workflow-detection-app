@@ -455,7 +455,26 @@ export const ThreeDScene: React.FC<ThreeDSceneProps> = memo(({
   return (
     <div className="relative w-full h-[600px] rounded-3xl overflow-hidden glass-card border border-white/[0.08] shadow-2xl bg-[#0a0e1a]">
       {/* Elastic Mesh Interactive Background Layer */}
-      <ElasticMesh color1="#00d4ff" color2="#7c3aed" opacity={0.18} />
+      <ElasticMesh
+        color1="#00d4ff"
+        color2="#7c3aed"
+        highlight="#ffffff"
+        gridColor="#00d4ff"
+        showGrid={true}
+        gridDensity={15}
+        gridOpacity={0.15}
+        borderRadius={25}
+        stiffness={0.04}
+        damping={0.25}
+        grabRadius={0.7}
+        pull={0.35}
+        wobble={6}
+        tilt={10}
+        shading={0.4}
+        resolution={20}
+        interaction="hover"
+        enabled={true}
+      />
 
       {/* 3D Canvas */}
       <Canvas

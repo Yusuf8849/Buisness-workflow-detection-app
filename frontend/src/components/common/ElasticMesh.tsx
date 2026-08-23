@@ -1,16 +1,28 @@
 import React, { useEffect, useRef } from 'react';
 import './ElasticMesh.css';
 
-interface ElasticMeshProps {
+export interface ElasticMeshProps {
   color1?: string;
   color2?: string;
-  gridSize?: number;
-  repelRadius?: number;
-  repelForce?: number;
+  highlight?: string;
+  gridColor?: string;
+  showGrid?: boolean;
+  gridDensity?: number;
+  gridOpacity?: number;
+  opacity?: number;
+  borderRadius?: number;
   stiffness?: number;
   damping?: number;
-  opacity?: number;
+  grabRadius?: number;
+  pull?: number;
+  wobble?: number;
+  tilt?: number;
+  shading?: number;
+  resolution?: number;
+  interaction?: 'hover' | 'drag' | 'click';
+  enabled?: boolean;
   className?: string;
+  style?: React.CSSProperties;
 }
 
 interface MeshPoint {
@@ -24,20 +36,35 @@ interface MeshPoint {
 }
 
 export const ElasticMesh: React.FC<ElasticMeshProps> = ({
-  color1 = '#00d4ff', // Cyan
-  color2 = '#7c3aed', // Purple
-  gridSize = 40,
-  repelRadius = 140,
-  repelForce = 28,
-  stiffness = 0.045,
-  damping = 0.88,
-  opacity = 0.18,
-  className = ''
+  color1 = '#00d4ff',
+  color2 = '#7c3aed',
+  highlight = '#ffffff',
+  gridColor = '#00d4ff',
+  showGrid = true,
+  gridDensity = 15,
+  gridOpacity,
+  opacity = 0.15,
+  borderRadius = 25,
+  stiffness = 0.04,
+  damping = 0.25,
+  grabRadius = 0.7,
+  pull = 0.35,
+  wobble = 6,
+  tilt = 10,
+  shading = 0.4,
+  resolution = 20,
+  interaction = 'hover',
+  enabled = true,
+  className = '',
+  style
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const resolvedGridOpacity = gridOpacity ?? opacity ?? 0.15;
 
   useEffect(() => {
+    if (!enabled) return;
+
     const container = containerRef.current;
     const canvas = canvasRef.current;
     if (!container || !canvas) return;
@@ -60,6 +87,11 @@ export const ElasticMesh: React.FC<ElasticMeshProps> = ({
       isActive: false
     };
 
+    const effectiveGridSize = Math.max(16, Math.floor(600 / Math.max(5, gridDensity)));
+    const effectiveRadius = Math.max(60, grabRadius * 200);
+    const effectiveForce = Math.max(10, pull * 80);
+    const effectiveDamping = Math.min(0.96, Math.max(0.7, 1 - damping * 0.3));
+
     const initGrid = () => {
       const rect = container.getBoundingClientRect();
       width = Math.floor(rect.width);
@@ -71,18 +103,18 @@ export const ElasticMesh: React.FC<ElasticMeshProps> = ({
       canvas.height = Math.floor(height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      cols = Math.ceil(width / gridSize) + 2;
-      rows = Math.ceil(height / gridSize) + 2;
+      cols = Math.ceil(width / effectiveGridSize) + 2;
+      rows = Math.ceil(height / effectiveGridSize) + 2;
 
       points = [];
-      const offsetX = (width - (cols - 1) * gridSize) / 2;
-      const offsetY = (height - (rows - 1) * gridSize) / 2;
+      const offsetX = (width - (cols - 1) * effectiveGridSize) / 2;
+      const offsetY = (height - (rows - 1) * effectiveGridSize) / 2;
 
       for (let r = 0; r < rows; r++) {
         const rowPoints: MeshPoint[] = [];
         for (let c = 0; c < cols; c++) {
-          const originX = offsetX + c * gridSize;
-          const originY = offsetY + r * gridSize;
+          const originX = offsetX + c * effectiveGridSize;
+          const originY = offsetY + r * effectiveGridSize;
           rowPoints.push({
             originX,
             originY,
@@ -90,7 +122,7 @@ export const ElasticMesh: React.FC<ElasticMeshProps> = ({
             y: originY,
             vx: 0,
             vy: 0,
-            phase: (c + r) * 0.35
+            phase: (c * 0.4 + r * 0.3)
           });
         }
         points.push(rowPoints);
@@ -101,19 +133,19 @@ export const ElasticMesh: React.FC<ElasticMeshProps> = ({
       ctx.clearRect(0, 0, width, height);
 
       // Smooth mouse follow
-      mouse.x += (mouse.targetX - mouse.x) * 0.2;
-      mouse.y += (mouse.targetY - mouse.y) * 0.2;
+      mouse.x += (mouse.targetX - mouse.x) * 0.22;
+      mouse.y += (mouse.targetY - mouse.y) * 0.22;
 
-      const t = time * 0.0018;
+      const t = time * 0.0015;
 
-      // Update points with spring dynamics + ambient wave oscillation
+      // Update points with spring dynamics + wobble
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
           const p = points[r][c];
 
-          // Living ambient breathing drift
-          const waveX = Math.sin(t + p.phase) * 3.5;
-          const waveY = Math.cos(t + p.phase * 0.8) * 3.5;
+          // Living ambient breathing wobble
+          const waveX = Math.sin(t + p.phase) * (wobble * 0.5);
+          const waveY = Math.cos(t * 0.8 + p.phase) * (wobble * 0.5);
           const targetOriginX = p.originX + waveX;
           const targetOriginY = p.originY + waveY;
 
@@ -122,8 +154,8 @@ export const ElasticMesh: React.FC<ElasticMeshProps> = ({
           const dy = p.y - mouse.y;
           const dist = Math.hypot(dx, dy);
 
-          if (dist < repelRadius && dist > 0) {
-            const force = (1 - dist / repelRadius) * repelForce;
+          if (dist < effectiveRadius && dist > 0 && mouse.isActive) {
+            const force = (1 - dist / effectiveRadius) * effectiveForce;
             const angle = Math.atan2(dy, dx);
             p.vx += Math.cos(angle) * force;
             p.vy += Math.sin(angle) * force;
@@ -133,61 +165,66 @@ export const ElasticMesh: React.FC<ElasticMeshProps> = ({
           const fx = (targetOriginX - p.x) * stiffness;
           const fy = (targetOriginY - p.y) * stiffness;
 
-          p.vx = (p.vx + fx) * damping;
-          p.vy = (p.vy + fy) * damping;
+          p.vx = (p.vx + fx) * effectiveDamping;
+          p.vy = (p.vy + fy) * effectiveDamping;
 
           p.x += p.vx;
           p.y += p.vy;
         }
       }
 
-      // Create gradient stroke across canvas
-      const gradient = ctx.createLinearGradient(0, 0, width, height);
-      gradient.addColorStop(0, color1);
-      gradient.addColorStop(0.5, '#38bdf8');
-      gradient.addColorStop(1, color2);
+      if (showGrid) {
+        // Gradient stroke across canvas
+        const gradient = ctx.createLinearGradient(0, 0, width, height);
+        gradient.addColorStop(0, color1);
+        gradient.addColorStop(0.5, gridColor);
+        gradient.addColorStop(1, color2);
 
-      ctx.strokeStyle = gradient;
-      ctx.globalAlpha = opacity;
-      ctx.lineWidth = 1.0;
+        ctx.strokeStyle = gradient;
+        ctx.globalAlpha = resolvedGridOpacity;
+        ctx.lineWidth = 1.0;
 
-      // Draw horizontal grid lines
-      for (let r = 0; r < rows; r++) {
-        ctx.beginPath();
-        for (let c = 0; c < cols; c++) {
-          const p = points[r][c];
-          if (c === 0) {
-            ctx.moveTo(p.x, p.y);
-          } else {
-            ctx.lineTo(p.x, p.y);
-          }
-        }
-        ctx.stroke();
-      }
-
-      // Draw vertical grid lines
-      for (let c = 0; c < cols; c++) {
-        ctx.beginPath();
+        // Draw horizontal grid lines
         for (let r = 0; r < rows; r++) {
-          const p = points[r][c];
-          if (r === 0) {
-            ctx.moveTo(p.x, p.y);
-          } else {
-            ctx.lineTo(p.x, p.y);
-          }
-        }
-        ctx.stroke();
-      }
-
-      // Draw subtle intersection micro-nodes
-      ctx.fillStyle = color1;
-      ctx.globalAlpha = opacity * 1.5;
-      for (let r = 0; r < rows; r += 2) {
-        for (let c = 0; c < cols; c += 2) {
-          const p = points[r][c];
           ctx.beginPath();
-          ctx.arc(p.x, p.y, 1.2, 0, Math.PI * 2);
-          ctx.fill();
+          for (let c = 0; c < cols; c++) {
+            const p = points[r][c];
+            if (c === 0) {
+              ctx.moveTo(p.x, p.y);
+            } else {
+              ctx.lineTo(p.x, p.y);
+            }
+          }
+          ctx.stroke();
+        }
+
+        // Draw vertical grid lines
+        for (let c = 0; c < cols; c++) {
+          ctx.beginPath();
+          for (let r = 0; r < rows; r++) {
+            const p = points[r][c];
+            if (r === 0) {
+              ctx.moveTo(p.x, p.y);
+            } else {
+              ctx.lineTo(p.x, p.y);
+            }
+          }
+          ctx.stroke();
+        }
+
+        // Highlight nodes near mouse
+        ctx.fillStyle = highlight;
+        ctx.globalAlpha = resolvedGridOpacity * 2.2;
+        for (let r = 0; r < rows; r += 2) {
+          for (let c = 0; c < cols; c += 2) {
+            const p = points[r][c];
+            const dist = Math.hypot(p.x - mouse.x, p.y - mouse.y);
+            if (dist < effectiveRadius * 1.2) {
+              ctx.beginPath();
+              ctx.arc(p.x, p.y, 1.6, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
         }
       }
 
@@ -224,10 +261,39 @@ export const ElasticMesh: React.FC<ElasticMeshProps> = ({
       window.removeEventListener('pointerleave', handlePointerLeave);
       resizeObserver.disconnect();
     };
-  }, [color1, color2, gridSize, repelRadius, repelForce, stiffness, damping, opacity]);
+  }, [
+    color1,
+    color2,
+    highlight,
+    gridColor,
+    showGrid,
+    gridDensity,
+    gridOpacity,
+    borderRadius,
+    stiffness,
+    damping,
+    grabRadius,
+    pull,
+    wobble,
+    tilt,
+    shading,
+    resolution,
+    interaction,
+    enabled
+  ]);
+
+  if (!enabled) return null;
 
   return (
-    <div ref={containerRef} className={`elastic-mesh ${className}`} aria-hidden="true">
+    <div
+      ref={containerRef}
+      className={`elastic-mesh ${className}`}
+      style={{
+        borderRadius: borderRadius ? `${borderRadius}px` : undefined,
+        ...style
+      }}
+      aria-hidden="true"
+    >
       <canvas ref={canvasRef} />
     </div>
   );
