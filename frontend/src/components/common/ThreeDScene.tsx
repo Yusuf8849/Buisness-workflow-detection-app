@@ -476,12 +476,12 @@ export const ThreeDScene: React.FC<ThreeDSceneProps> = memo(({
         enabled={true}
       />
 
-      {/* 3D Canvas */}
+      {/* 3D Canvas with relative z-index: 1 on top of ElasticMesh */}
       <Canvas
         camera={{ position: [0, 2, 22], fov: 50 }}
         gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
         dpr={[1, 1.5]}
-        className="w-full h-full"
+        className="three-scene w-full h-full relative z-[1]"
       >
         {/* Lights */}
         <ambientLight intensity={0.4} />

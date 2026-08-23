@@ -1,3 +1,8 @@
+.three-scene {
+  position: relative;
+  z-index: 1;
+}
+
 .elastic-mesh {
   position: absolute;
   top: 0;

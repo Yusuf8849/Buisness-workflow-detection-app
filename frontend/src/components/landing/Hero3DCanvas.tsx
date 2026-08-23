@@ -192,7 +192,7 @@ export const Hero3DCanvas: React.FC = memo(() => {
       <ElasticMesh color1="#00d4ff" color2="#7c3aed" opacity={0.18} />
 
       {/* Three.js canvas mount point */}
-      <div ref={mountRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
+      <div ref={mountRef} className="three-scene w-full h-full relative z-[1] cursor-grab active:cursor-grabbing" />
 
       {/* Floating Chaos-to-Order Control Slider */}
       <div className="absolute bottom-6 left-6 right-6 p-4 rounded-2xl bg-[#0a0e1a]/85 backdrop-blur-[24px] border border-white/[0.12] shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-4 z-20">
