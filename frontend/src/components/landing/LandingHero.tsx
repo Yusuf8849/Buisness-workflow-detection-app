@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { AnimatedCounter } from '../common/AnimatedCounter';
 import { Sparkles, ArrowRight, Play, CheckCircle2, ShieldCheck, Zap, Layers, Activity, Cpu, Network } from 'lucide-react';
+import { ParticleText } from '../common/ParticleText';
 
 const LazyThreeDScene = lazy(() => import('../common/ThreeDScene'));
 const LazyHero3DCanvas = lazy(() => import('./Hero3DCanvas'));
@@ -96,7 +97,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
         transition={{ duration: 0.6, ease: 'easeOut' }}
         className="text-center max-w-4xl mx-auto space-y-6 mb-12"
       >
-        {/* Big Leader Brand Heading */}
+        {/* Big Leader Brand Heading with Interactive Particle Text */}
         <div className="space-y-3">
           <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-[#00b4d8]/15 border border-[#00b4d8]/30 text-[#00b4d8] text-xs font-mono font-bold tracking-widest uppercase backdrop-blur-[20px] shadow-[0_0_20px_rgba(0,180,216,0.2)]">
             <span className="relative flex h-2.5 w-2.5">
@@ -106,9 +107,26 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
             <span>NEXT-GEN AI PROCESS INTELLIGENCE</span>
           </div>
 
-          <h1 className="text-5xl sm:text-7xl lg:text-8xl font-black tracking-tight font-display bg-gradient-to-r from-[#00b4d8] via-[#38bdf8] to-[#7c3aed] bg-clip-text text-transparent animate-gradient-x drop-shadow-sm pb-1">
-            FlowIntel<span className="text-[#00b4d8]">.AI</span>
-          </h1>
+          {/* Interactive Particle Text Effect for FlowIntel.AI */}
+          <div className="w-full h-28 sm:h-36 lg:h-44 flex items-center justify-center relative overflow-visible">
+            <ParticleText
+              text="FlowIntel.AI"
+              fontSize="clamp(3.2rem, 9.5vw, 6.8rem)"
+              fontWeight={900}
+              color="#00b4d8"
+              highlightColor="#8b5cf6"
+              particleSize={2.4}
+              density={3.6}
+              scatter={190}
+              gatherDuration={1500}
+              stagger={380}
+              pointerRepel={45}
+              repelRadius={120}
+              idleDrift={0.7}
+              glow={true}
+              trigger="hover"
+            />
+          </div>
 
           <h2 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-[#0f172a] dark:text-[#e8edf5] tracking-tight leading-[1.15] font-display">
             <span className="gradient-text-wave drop-shadow-sm">
