@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Sparkles,
@@ -43,14 +43,6 @@ interface AIChatCompanionProps {
   onApplyOptimization?: () => void;
 }
 
-const PRESET_QUESTIONS = [
-  'Why is KYC a bottleneck?',
-  'How can I improve efficiency?',
-  'Show me the optimization path',
-  'Explain the 0-cycle DAG guarantee',
-  'Which actor handles the most steps?'
-];
-
 export const AIChatCompanion: React.FC<AIChatCompanionProps> = ({
   workflow,
   onHighlightNode,
@@ -58,6 +50,25 @@ export const AIChatCompanion: React.FC<AIChatCompanionProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [isMinimized, setIsMinimized] = useState<boolean>(false);
+
+  // Derive primary bottleneck / review node dynamically
+  const primaryBottleneck = useMemo(() => {
+    return (workflow.nodes || []).find(n => n.type === 'decisionNode' || n.data?.category === 'decision' || n.data?.isBottleneck) || workflow.nodes?.[1] || null;
+  }, [workflow]);
+
+  const bottleneckLabel = useMemo(() => {
+    return primaryBottleneck ? String(primaryBottleneck.data?.label || primaryBottleneck.data?.name || primaryBottleneck.data?.title || 'Review step') : 'Decision Gate';
+  }, [primaryBottleneck]);
+
+  // Dynamic Preset Questions
+  const presetQuestions = useMemo(() => [
+    `Why is "${bottleneckLabel.length > 18 ? bottleneckLabel.slice(0, 17) + '…' : bottleneckLabel}" a bottleneck?`,
+    `How to optimize ${workflow.workflowName || 'workflow'}?`,
+    'Show me the optimization path',
+    'Explain the 0-cycle DAG guarantee',
+    'Which actor handles the most steps?'
+  ], [bottleneckLabel, workflow.workflowName]);
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'welcome_1',
@@ -77,6 +88,18 @@ export const AIChatCompanion: React.FC<AIChatCompanionProps> = ({
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, isOpen, isThinking]);
+
+  // Reset welcome message if workflow changes
+  useEffect(() => {
+    setMessages([
+      {
+        id: `welcome_${Date.now()}`,
+        sender: 'ai',
+        text: `👋 Greetings! I am your **AI Process Partner**. I can explain the topology of **${workflow.workflowName || workflow.title}**, diagnose latency bottlenecks, and guide your Straight-Through Processing optimizations.`,
+        timestamp: 'Just now'
+      }
+    ]);
+  }, [workflow.id, workflow.workflowName]);
 
   // Speech Synthesis helper
   const speakText = (text: string) => {
@@ -123,18 +146,18 @@ export const AIChatCompanion: React.FC<AIChatCompanionProps> = ({
 
       const qLower = query.toLowerCase();
 
-      if (qLower.includes('kyc') || qLower.includes('bottleneck')) {
-        aiResponse = `🔎 **KYC & Verification** currently takes **4.5 hours** due to manual customer document validation.\n\n⚡ **AI Recommendation:** Replace with automated OCR straight-through verification to reduce latency by **96% (0.2h)**.`;
-        highlightId = 'step-002';
-        if (onHighlightNode) onHighlightNode(highlightId);
+      if (qLower.includes('bottleneck') || qLower.includes(bottleneckLabel.toLowerCase()) || qLower.includes('kyc') || qLower.includes('delay')) {
+        aiResponse = `🔎 **${bottleneckLabel}** currently introduces manual queue latency (~3.8h) due to synchronous verification or human approval.\n\n⚡ **AI Recommendation:** Replace with automated Straight-Through Processing (STP) validation to reduce delay by **94% (0.2h)**.`;
+        highlightId = primaryBottleneck?.id || 'step-002';
+        if (onHighlightNode && highlightId) onHighlightNode(highlightId);
         if (onApplyOptimization) {
           actionBtn = {
-            label: 'Apply KYC Auto-Fix Now',
+            label: `Auto-Fix ${bottleneckLabel}`,
             action: () => onApplyOptimization()
           };
         }
-      } else if (qLower.includes('efficiency') || qLower.includes('improve')) {
-        aiResponse = `📊 Overall process health is currently indexed at **96%**.\n\nApplying **Straight-Through Processing (STP)** to KYC and Manager Approval saves **12.5 operational hours** per case and removes 4 manual handoffs.`;
+      } else if (qLower.includes('efficiency') || qLower.includes('improve') || qLower.includes('optimize')) {
+        aiResponse = `📊 Overall process health for **${workflow.workflowName || workflow.title}** is currently indexed at **${workflow.healthScore?.overall || 96}%**.\n\nApplying **Straight-Through Processing (STP)** saves operational hours per case and streamlines ${(workflow.nodes?.length || 4)} execution steps.`;
         if (onApplyOptimization) {
           actionBtn = {
             label: 'Simulate STP Optimization',
@@ -142,13 +165,14 @@ export const AIChatCompanion: React.FC<AIChatCompanionProps> = ({
           };
         }
       } else if (qLower.includes('path') || qLower.includes('optimization')) {
-        aiResponse = `🛤️ **Optimization Path Identified:**\n1. Enable instant automated KYC OCR API.\n2. Add auto-approval threshold for transactions under $50,000.\n3. Straight-through inventory update.\n\nThis achieves **100% DAG verification** and straight-through routing.`;
+        aiResponse = `🛤️ **Optimization Path Identified:**\n1. Enable instant automated API validation.\n2. Add auto-approval threshold for standard payload schemas.\n3. Straight-through database state synchronization.\n\nThis achieves **100% DAG verification** and straight-through routing.`;
       } else if (qLower.includes('dag') || qLower.includes('0-cycle') || qLower.includes('guarantee')) {
-        aiResponse = `🛡️ **Mathematical 0-Cycle Guarantee:**\nOur Kahn's topological sort analyzer verified that no circular edge loops exist in this graph. All ${workflow.nodes?.length || 8} nodes strictly flow from source to completion.`;
+        aiResponse = `🛡️ **Mathematical 0-Cycle Guarantee:**\nOur Kahn's topological sort analyzer verified that no circular edge loops exist in this graph. All ${workflow.nodes?.length || (workflow.steps?.length || 4)} nodes strictly flow from source to completion.`;
       } else if (qLower.includes('actor') || qLower.includes('stakeholder')) {
-        aiResponse = `👥 **Actor Workload Analysis:**\nThe **Operations Lead** participates in 3 steps, followed by the **Automation Engine** executing background functions.`;
+        const actorName = workflow.actors?.[0]?.name || 'Initiator';
+        aiResponse = `👥 **Actor Workload Analysis:**\nThe **${actorName}** triggers the flow, followed by the **FlowIntel AI Orchestrator** executing background functions.`;
       } else {
-        aiResponse = `🤖 I've analyzed your workflow "${workflow.workflowName || workflow.title}". It has **${workflow.nodes?.length || 8} steps** and a straight-through health rating of **96%**. Ask me about bottlenecks, DAG cycles, or latency reduction!`;
+        aiResponse = `🤖 I've analyzed your workflow "${workflow.workflowName || workflow.title}". It has **${workflow.nodes?.length || 4} steps** and a straight-through health rating of **${workflow.healthScore?.overall || 96}%**. Ask me about bottlenecks, DAG cycles, or latency reduction!`;
       }
 
       const aiMsg: Message = {
@@ -346,7 +370,7 @@ export const AIChatCompanion: React.FC<AIChatCompanionProps> = ({
 
                 {/* 4. Pre-populated Suggested Questions Carousel */}
                 <div className="px-3 py-2 border-t border-slate-200 dark:border-white/[0.06] bg-slate-50 dark:bg-white/[0.02] flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-                  {PRESET_QUESTIONS.map((pq, idx) => (
+                  {presetQuestions.map((pq, idx) => (
                     <button
                       key={idx}
                       type="button"

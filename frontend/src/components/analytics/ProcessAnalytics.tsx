@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Workflow } from '../../types/workflow';
+import { Workflow, CustomWorkflowNode } from '../../types/workflow';
 import {
   ResponsiveContainer,
   RadarChart,
@@ -28,7 +28,8 @@ import {
   Search,
   Check,
   RefreshCw,
-  Lightbulb
+  Lightbulb,
+  Crosshair
 } from 'lucide-react';
 import { AnimatedCounter } from '../common/AnimatedCounter';
 
@@ -41,11 +42,96 @@ export const ProcessAnalytics: React.FC<ProcessAnalyticsProps> = ({ workflow, on
   const [animatedScore, setAnimatedScore] = useState<number>(0);
   const [isResolvedMode, setIsResolvedMode] = useState<boolean>(false);
   const [activeDimensionIndex, setActiveDimensionIndex] = useState<number>(0);
-  const [selectedBottleneckId, setSelectedBottleneckId] = useState<string | null>(null);
+  const [selectedStepId, setSelectedStepId] = useState<string | null>(null);
   const [gradeText, setGradeText] = useState<string>('');
 
-  // Target Health Score: 96%
+  // Target Health Score
   const targetScore = isResolvedMode ? 98 : (workflow.healthScore?.overall || 96);
+
+  // 1. DYNAMIC LATENCY STEPS: Generated directly from detected workflow nodes
+  const latencySteps = useMemo(() => {
+    const rawNodes: CustomWorkflowNode[] = workflow.nodes && workflow.nodes.length > 0
+      ? workflow.nodes
+      : (workflow.steps || []).map((s, idx) => ({
+          id: s.stepId || `step_${idx + 1}`,
+          type: s.actionType === 'operation' ? 'decisionNode' : 'actionNode',
+          position: { x: 0, y: 0 },
+          data: {
+            label: s.name,
+            name: s.name,
+            title: s.name,
+            category: s.actionType,
+            actionType: s.actionType
+          }
+        } as CustomWorkflowNode));
+
+    if (!rawNodes || rawNodes.length === 0) {
+      return [
+        { id: 'step_1', name: 'Trigger Event', asIsHours: 0.8, toBeHours: 0.05, reduction: '-94%', isBottleneck: false, type: 'triggerNode', category: 'trigger' },
+        { id: 'step_2', name: 'Process Execution', asIsHours: 2.5, toBeHours: 0.2, reduction: '-92%', isBottleneck: false, type: 'actionNode', category: 'action' },
+        { id: 'step_3', name: 'Validation & Approval', asIsHours: 4.2, toBeHours: 0.25, reduction: '-94%', isBottleneck: true, type: 'decisionNode', category: 'decision' },
+        { id: 'step_4', name: 'Workflow Completion', asIsHours: 1.5, toBeHours: 0.1, reduction: '-93%', isBottleneck: false, type: 'completionNode', category: 'completion' }
+      ];
+    }
+
+    return rawNodes.map((node, idx) => {
+      const label = String(node.data?.label || node.data?.name || node.data?.title || `Step ${idx + 1}`);
+      const lower = label.toLowerCase();
+      const nodeType = String(node.type || '').toLowerCase();
+      const isDecision = nodeType.includes('decision') || node.data?.category === 'decision' || /if|check|verify|approval|review|valid|score|policy|whether/i.test(lower);
+      const isDoc = nodeType.includes('document') || /document|payload|kyc|receipt|invoice|record|file|data/i.test(lower);
+      const isActor = nodeType.includes('actor') || /notif|manager|vendor|customer|employee|director|lead|stakeholder/i.test(lower);
+      const isTrigger = nodeType.includes('trigger') || idx === 0;
+
+      // Realistic latency estimation based on step characteristics
+      let asIsHours = 1.6 + ((idx * 3) % 4) * 0.3;
+      if (isDecision) {
+        asIsHours = 3.8 + (idx % 2 === 0 ? 0.7 : 0.4);
+      } else if (isDoc) {
+        asIsHours = 2.3 + (idx % 2 === 0 ? 0.4 : 0.2);
+      } else if (isActor) {
+        asIsHours = 3.2 + (idx % 2 === 0 ? 0.6 : 0.3);
+      } else if (isTrigger) {
+        asIsHours = 0.8;
+      }
+
+      asIsHours = Number(asIsHours.toFixed(1));
+      let toBeHours = Number((asIsHours * 0.07).toFixed(2));
+      if (toBeHours < 0.08) toBeHours = 0.08;
+
+      const reductionPct = Math.round(((asIsHours - toBeHours) / asIsHours) * 100);
+      const isBottleneck = node.data?.isBottleneck ?? (asIsHours >= 3.0 || isDecision);
+
+      return {
+        id: node.id,
+        name: label,
+        asIsHours,
+        toBeHours,
+        reduction: `-${reductionPct}%`,
+        isBottleneck,
+        type: node.type || (isDecision ? 'decisionNode' : 'actionNode'),
+        category: isDecision ? 'decision' : isDoc ? 'document' : isActor ? 'actor' : isTrigger ? 'trigger' : 'action'
+      };
+    });
+  }, [workflow]);
+
+  // Aggregate metrics derived dynamically from latencySteps
+  const totalAsIsHours = useMemo(() => Number(latencySteps.reduce((acc, s) => acc + s.asIsHours, 0).toFixed(1)), [latencySteps]);
+  const totalToBeHours = useMemo(() => Number(latencySteps.reduce((acc, s) => acc + s.toBeHours, 0).toFixed(1)), [latencySteps]);
+  const totalSavedHours = useMemo(() => Number((totalAsIsHours - totalToBeHours).toFixed(1)), [totalAsIsHours, totalToBeHours]);
+  const overallReductionPct = totalAsIsHours > 0 ? Math.round(((totalAsIsHours - totalToBeHours) / totalAsIsHours) * 100) : 94;
+  const maxLatencyHours = useMemo(() => Math.max(5.0, ...latencySteps.map(s => s.asIsHours)), [latencySteps]);
+
+  // Active Bottleneck Count
+  const activeBottlenecks = isResolvedMode ? 0 : latencySteps.filter(s => s.isBottleneck).length;
+
+  // Selected Step for Detailed Bottleneck / Node Inspection
+  const activeSelectedStep = useMemo(() => {
+    if (selectedStepId) {
+      return latencySteps.find(s => s.id === selectedStepId) || null;
+    }
+    return latencySteps.find(s => s.isBottleneck) || latencySteps[0] || null;
+  }, [selectedStepId, latencySteps]);
 
   // Grade typewriter effect
   useEffect(() => {
@@ -92,41 +178,33 @@ export const ProcessAnalytics: React.FC<ProcessAnalyticsProps> = ({ workflow, on
     return () => clearInterval(dimTimer);
   }, []);
 
-  // Metrics
-  const metrics = workflow.metrics || {
-    stepCount: 10,
-    actorCount: 6,
-    decisionCount: 2,
-    relationshipCount: 11,
-    estimatedCycleTime: '3.5 days',
-    manualHandoffs: 4
+  // Dynamic Metrics
+  const metrics = {
+    stepCount: workflow.nodes?.length || workflow.metrics?.stepCount || latencySteps.length,
+    actorCount: workflow.actors?.length || workflow.metrics?.actorCount || 2,
+    decisionCount: workflow.nodes?.filter(n => n.type === 'decisionNode' || n.data?.category === 'decision').length || workflow.metrics?.decisionCount || latencySteps.filter(s => s.isBottleneck).length,
+    relationshipCount: workflow.edges?.length || workflow.metrics?.relationshipCount || (latencySteps.length > 0 ? latencySteps.length - 1 : 0),
+    estimatedCycleTime: isResolvedMode ? `${totalToBeHours} hours` : (workflow.metrics?.estimatedCycleTime || `${totalAsIsHours} hours`),
+    manualHandoffs: isResolvedMode ? 0 : (workflow.metrics?.manualHandoffs || Math.max(1, Math.floor(latencySteps.length / 2)))
   };
 
-  // 5 Radar Dimensions
+  // 5 Dynamic Radar Dimensions
   const radarData = [
-    { subject: 'Clarity', score: 94, fullMark: 100, desc: 'Unambiguous action semantics' },
-    { subject: 'Ownership', score: 96, fullMark: 100, desc: 'Clear stakeholder mapping' },
-    { subject: 'Efficiency', score: isResolvedMode ? 98 : 91, fullMark: 100, desc: 'Minimal latency queues' },
-    { subject: 'Automation', score: isResolvedMode ? 95 : 88, fullMark: 100, desc: 'Straight-through APIs' },
-    { subject: 'Decision Complexity', score: 82, fullMark: 100, desc: 'Deterministic branch rules' },
+    { subject: 'Clarity', score: workflow.healthScore?.clarity || 94, fullMark: 100, desc: 'Unambiguous action semantics' },
+    { subject: 'Ownership', score: workflow.healthScore?.ownershipClarity || 96, fullMark: 100, desc: 'Clear stakeholder mapping' },
+    { subject: 'Efficiency', score: isResolvedMode ? 98 : (workflow.healthScore?.efficiency || 91), fullMark: 100, desc: 'Minimal latency queues' },
+    { subject: 'Automation', score: isResolvedMode ? 96 : Math.max(75, 100 - (workflow.healthScore?.manualDependency || 10)), fullMark: 100, desc: 'Straight-through APIs' },
+    { subject: 'Decision Complexity', score: workflow.healthScore?.decisionComplexity || 84, fullMark: 100, desc: 'Deterministic branch rules' },
   ];
-
-  // Latency Comparison Data with Crumble Animation
-  const latencySteps = [
-    { id: 'step-001', name: 'Document Intake', asIsHours: 1.8, toBeHours: 0.15, reduction: '-92%', isBottleneck: false },
-    { id: 'step-002', name: 'KYC & Verification', asIsHours: 4.5, toBeHours: 0.2, reduction: '-96%', isBottleneck: true },
-    { id: 'step-003', name: 'Risk Scoring', asIsHours: 2.6, toBeHours: 0.3, reduction: '-88%', isBottleneck: false },
-    { id: 'step-004', name: 'Manager Sign-Off', asIsHours: 3.8, toBeHours: 0.25, reduction: '-93%', isBottleneck: true },
-    { id: 'step-005', name: 'Finance Disbursement', asIsHours: 1.5, toBeHours: 0.1, reduction: '-93%', isBottleneck: false },
-  ];
-
-  // Active Bottleneck Count
-  const activeBottlenecks = isResolvedMode ? 0 : 2;
 
   // SVG Gauge calculations
   const radius = 76;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (circumference * animatedScore) / 100;
+
+  // Mini DAG Heatmap SVG layout math
+  const svgWidth = Math.max(680, latencySteps.length * 135);
+  const stepSpacing = latencySteps.length > 1 ? (svgWidth - 140) / (latencySteps.length - 1) : 300;
 
   return (
     <div className="space-y-8 text-left">
@@ -141,7 +219,7 @@ export const ProcessAnalytics: React.FC<ProcessAnalyticsProps> = ({ workflow, on
             Dynamic Process Analytics & Storytelling
           </h2>
           <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300">
-            Real-time health score indexing, radar topology mapping, latency simulation, and bottleneck diagnostics.
+            Real-time health score indexing, radar topology mapping, dynamic latency simulation, and bottleneck diagnostics for <span className="font-semibold text-[#00b4d8]">{workflow.workflowName || workflow.title}</span>.
           </p>
         </div>
 
@@ -160,7 +238,7 @@ export const ProcessAnalytics: React.FC<ProcessAnalyticsProps> = ({ workflow, on
         </button>
       </div>
 
-      {/* 2. Top Savings Callout Banner: "12.5 Hours Saved" */}
+      {/* 2. Top Savings Callout Banner (Dynamically Calculated) */}
       <div className="glass-card p-4 sm:p-5 rounded-2xl border border-[#00b4d8]/30 shadow-[0_4px_20px_rgba(0,180,216,0.12)] flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-[#00b4d8]/20 border border-[#00b4d8]/40 flex items-center justify-center text-[#00b4d8] shrink-0 shadow-[0_0_15px_rgba(0,180,216,0.25)]">
@@ -168,22 +246,22 @@ export const ProcessAnalytics: React.FC<ProcessAnalyticsProps> = ({ workflow, on
           </div>
           <div>
             <div className="text-xs font-mono text-[#00b4d8] font-bold uppercase tracking-wider">
-              OPERATIONAL TIME RECOVERY
+              OPERATIONAL TIME RECOVERY • {workflow.workflowName || 'WORKFLOW'}
             </div>
             <div className="text-base sm:text-lg font-bold text-[#0f172a] dark:text-[#e8edf5] font-display">
-              💡 <span className="text-[#00b4d8]">12.5 hours</span> saved per week per case with Straight-Through Processing
+              💡 <span className="text-[#00b4d8]">{totalSavedHours} hours</span> saved per case with Straight-Through Processing (STP)
             </div>
           </div>
         </div>
 
-        {/* Gradient Badge: -94% */}
+        {/* Dynamic Gradient Badge */}
         <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-[#7c3aed]/15 border border-[#7c3aed]/30 text-[#7c3aed] text-xs font-mono font-bold shrink-0 shadow-sm">
           <TrendingDown className="w-4 h-4" />
-          <span>-94% Cycle Delay</span>
+          <span>-{overallReductionPct}% Cycle Delay</span>
         </div>
       </div>
 
-      {/* Top 4 Key Metric Summary Cards (Light Mode: White with subtle shadow + 4px solid left border) */}
+      {/* Top 4 Key Metric Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Stat Card 1: Total Operations (Cyan Left Border) */}
         <div className="bg-white dark:glass-card card-lift p-5 space-y-1 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.06)] border border-slate-200/80 dark:border-white/[0.08] border-l-4 !border-l-[#00b4d8]">
@@ -194,7 +272,6 @@ export const ProcessAnalytics: React.FC<ProcessAnalyticsProps> = ({ workflow, on
           <div className="text-2xl sm:text-3xl font-extrabold text-[#0f172a] dark:text-[#e8edf5] font-display">
             <AnimatedCounter value={metrics.stepCount} />
           </div>
-          {/* Gradient Badge: 100% */}
           <span className="inline-flex items-center gap-1 text-[10px] font-mono text-[#059669] font-bold bg-[#059669]/10 px-2 py-0.5 rounded-full border border-[#059669]/30">
             <CheckCircle2 className="w-3 h-3" />
             <span>100% DAG Verified</span>
@@ -208,11 +285,10 @@ export const ProcessAnalytics: React.FC<ProcessAnalyticsProps> = ({ workflow, on
             <Clock className="w-4 h-4 text-[#059669]" />
           </div>
           <div className="text-2xl sm:text-3xl font-extrabold text-[#059669] font-display">
-            {isResolvedMode ? '1.2 hours' : metrics.estimatedCycleTime}
+            {metrics.estimatedCycleTime}
           </div>
-          {/* Gradient Badge: 96% / -94% */}
           <span className="inline-flex items-center gap-1 text-[10px] font-mono text-[#3b82f6] font-bold bg-[#3b82f6]/10 px-2 py-0.5 rounded-full border border-[#3b82f6]/30">
-            {isResolvedMode ? '-94% STP Reduction' : '96% Automatable'}
+            {isResolvedMode ? `-${overallReductionPct}% STP Reduction` : '96% Automatable'}
           </span>
         </div>
 
@@ -237,7 +313,6 @@ export const ProcessAnalytics: React.FC<ProcessAnalyticsProps> = ({ workflow, on
           <div className={`text-2xl sm:text-3xl font-extrabold font-display ${activeBottlenecks > 0 ? 'text-[#e11d48]' : 'text-[#059669]'}`}>
             <AnimatedCounter value={activeBottlenecks} />
           </div>
-          {/* Gradient Badge: 0 Hotspots */}
           <span className={`inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${activeBottlenecks > 0 ? 'text-[#e11d48] bg-[#e11d48]/10 border border-[#e11d48]/30' : 'text-[#059669] bg-[#059669]/10 border border-[#059669]/30'}`}>
             {activeBottlenecks > 0 ? 'Requires Attention' : <><Check className="w-3 h-3 text-[#059669]" /> 0 Hotspots</>}
           </span>
@@ -258,7 +333,7 @@ export const ProcessAnalytics: React.FC<ProcessAnalyticsProps> = ({ workflow, on
             <span className="text-xs font-mono text-[#059669] font-bold">Overall Index</span>
           </div>
 
-          {/* SVG Circular Gauge with #e2e8f0 track & #3b82f6 -> #00b4d8 progress */}
+          {/* SVG Circular Gauge */}
           <div className="relative w-52 h-52 flex items-center justify-center">
             <svg className="w-full h-full -rotate-90 transform" viewBox="0 0 180 180">
               <defs>
@@ -268,7 +343,6 @@ export const ProcessAnalytics: React.FC<ProcessAnalyticsProps> = ({ workflow, on
                 </linearGradient>
               </defs>
 
-              {/* Background Track #e2e8f0 */}
               <circle
                 cx="90"
                 cy="90"
@@ -278,7 +352,6 @@ export const ProcessAnalytics: React.FC<ProcessAnalyticsProps> = ({ workflow, on
                 fill="transparent"
               />
 
-              {/* Progress Arc #3b82f6 to #00b4d8 */}
               <circle
                 cx="90"
                 cy="90"
@@ -296,7 +369,7 @@ export const ProcessAnalytics: React.FC<ProcessAnalyticsProps> = ({ workflow, on
               />
             </svg>
 
-            {/* Dark Navy Grade Rating with Glow */}
+            {/* Grade Rating with Glow */}
             <div className="absolute inset-0 flex flex-col items-center justify-center space-y-0.5">
               <div className="w-20 h-20 rounded-full bg-white dark:bg-white/[0.04] border border-[#00b4d8]/40 flex flex-col items-center justify-center shadow-[0_4px_20px_rgba(0,180,216,0.25)]">
                 <span className="text-2xl sm:text-3xl font-extrabold text-[#0f172a] dark:text-[#00d4ff] font-display">
@@ -336,7 +409,7 @@ export const ProcessAnalytics: React.FC<ProcessAnalyticsProps> = ({ workflow, on
           </div>
         </div>
 
-        {/* 5-Dimension Radar Chart (#00b4d8 fill 0.15 opacity, #e2e8f0 grid, #334155 labels) */}
+        {/* 5-Dimension Radar Chart */}
         <div className="lg:col-span-7 glass-card p-6 sm:p-8 space-y-4 flex flex-col justify-between">
           <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/[0.08] pb-3">
             <div className="flex items-center gap-2">
@@ -409,7 +482,7 @@ export const ProcessAnalytics: React.FC<ProcessAnalyticsProps> = ({ workflow, on
         </div>
       </div>
 
-      {/* Row 2: Latency Comparison */}
+      {/* Row 2: Dynamic Step-Level Latency Comparison */}
       <div className="glass-card p-6 sm:p-8 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-white/[0.08] pb-4">
           <div className="flex items-center gap-2">
@@ -419,7 +492,7 @@ export const ProcessAnalytics: React.FC<ProcessAnalyticsProps> = ({ workflow, on
                 Step-Level Latency Comparison (Crumble Transform)
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Human As-Is Execution vs AI-Optimized Straight-Through Processing (STP)
+                Human As-Is Execution vs AI-Optimized Straight-Through Processing (STP) for <span className="font-semibold text-[#00b4d8]">{workflow.workflowName || workflow.title}</span>
               </p>
             </div>
           </div>
@@ -434,22 +507,33 @@ export const ProcessAnalytics: React.FC<ProcessAnalyticsProps> = ({ workflow, on
           </div>
         </div>
 
-        {/* Side-by-Side Bar Rows */}
+        {/* Dynamic Side-by-Side Bar Rows */}
         <div className="space-y-4">
           {latencySteps.map((step, idx) => {
-            const asIsPct = (step.asIsHours / 5.0) * 100;
-            const toBePct = (step.toBeHours / 5.0) * 100;
+            const asIsPct = (step.asIsHours / maxLatencyHours) * 100;
+            const toBePct = (step.toBeHours / maxLatencyHours) * 100;
+            const isSelected = activeSelectedStep?.id === step.id;
 
             return (
               <div
-                key={idx}
-                className="p-4 rounded-2xl bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] hover:border-[#00b4d8]/40 transition-all space-y-2.5 card-lift shadow-sm"
+                key={step.id || idx}
+                onClick={() => {
+                  setSelectedStepId(step.id);
+                  if (onFocusNode) onFocusNode(step.id);
+                }}
+                className={`p-4 rounded-2xl border transition-all space-y-2.5 card-lift shadow-sm cursor-pointer ${
+                  isSelected
+                    ? 'bg-[#00b4d8]/10 border-[#00b4d8] shadow-[0_0_20px_rgba(0,180,216,0.2)]'
+                    : 'bg-white dark:bg-white/[0.03] border-slate-200 dark:border-white/[0.08] hover:border-[#00b4d8]/40'
+                }`}
               >
                 {/* Row Header */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-mono font-bold text-slate-400">0{idx + 1}.</span>
-                    <span className="text-xs sm:text-sm font-bold text-[#0f172a] dark:text-[#e8edf5] font-display">{step.name}</span>
+                    <span className="text-xs sm:text-sm font-bold text-[#0f172a] dark:text-[#e8edf5] font-display">
+                      {step.name}
+                    </span>
                     {step.isBottleneck && activeBottlenecks > 0 && (
                       <span className="px-2 py-0.5 rounded-full bg-[#f43f5e]/15 border border-[#f43f5e]/30 text-[#f43f5e] text-[10px] font-mono font-bold animate-pulse">
                         ⚠️ BOTTLENECK
@@ -500,7 +584,7 @@ export const ProcessAnalytics: React.FC<ProcessAnalyticsProps> = ({ workflow, on
         </div>
       </div>
 
-      {/* Row 3: Bottleneck Risks & Heatmap DAG Scanner */}
+      {/* Row 3: Dynamic Bottleneck Risks & Heatmap DAG Scanner */}
       <div className="glass-card p-6 sm:p-8 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-white/[0.08] pb-3">
           <div className="flex items-center gap-2">
@@ -510,88 +594,217 @@ export const ProcessAnalytics: React.FC<ProcessAnalyticsProps> = ({ workflow, on
                 Bottleneck Risk Heatmap & DAG Scanner
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Click a bottleneck node below to inspect AI mitigation recommendations
+                Click any workflow node in the DAG scanner below to inspect AI mitigation recommendations
               </p>
             </div>
           </div>
           <span className="text-xs font-mono text-slate-500 dark:text-slate-400">Live DAG Scanner</span>
         </div>
 
-        {/* Mini DAG Heatmap Preview */}
+        {/* Dynamic Mini DAG Heatmap Preview */}
         <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#0a0e1a]/80 border border-slate-200 dark:border-white/[0.08] overflow-x-auto">
-          <svg className="w-full min-w-[640px] h-28" viewBox="0 0 700 110">
+          <svg className="h-32" style={{ width: '100%', minWidth: `${svgWidth}px` }} viewBox={`0 0 ${svgWidth} 110`}>
             {/* Connecting Stream Lines */}
-            <path d="M 60 55 L 180 55" stroke="#00b4d8" strokeWidth="2.5" strokeDasharray="6, 6" />
-            <path d="M 240 55 L 340 55" stroke={activeBottlenecks > 0 ? '#f43f5e' : '#059669'} strokeWidth="2.5" strokeDasharray="6, 6" />
-            <path d="M 400 55 L 500 55" stroke="#00b4d8" strokeWidth="2.5" strokeDasharray="6, 6" />
-            <path d="M 560 55 L 640 55" stroke={activeBottlenecks > 0 ? '#f43f5e' : '#059669'} strokeWidth="2.5" strokeDasharray="6, 6" />
+            {latencySteps.map((step, idx) => {
+              if (idx >= latencySteps.length - 1) return null;
+              const x1 = 70 + idx * stepSpacing + 30;
+              const x2 = 70 + (idx + 1) * stepSpacing - 30;
+              const isDanger = !isResolvedMode && (step.isBottleneck || latencySteps[idx + 1].isBottleneck);
 
-            {/* Node 1: Customer */}
-            <circle cx="60" cy="55" r="22" fill="#3b82f6" fillOpacity="0.2" stroke="#3b82f6" strokeWidth="2" />
-            <text x="60" y="58" textAnchor="middle" fill="#3b82f6" fontSize="10" fontFamily="monospace" fontWeight="bold">INIT</text>
-            <text x="60" y="92" textAnchor="middle" fill="#64748b" fontSize="10" fontFamily="monospace">Customer</text>
+              return (
+                <path
+                  key={`line_${idx}`}
+                  d={`M ${x1} 55 L ${x2} 55`}
+                  stroke={isDanger ? '#f43f5e' : '#00b4d8'}
+                  strokeWidth="2.5"
+                  strokeDasharray="6, 6"
+                  className={isDanger ? 'animate-pulse' : ''}
+                />
+              );
+            })}
 
-            {/* Node 2: Intake */}
-            <rect x="180" y="35" width="60" height="40" rx="10" fill="#059669" fillOpacity="0.2" stroke="#059669" strokeWidth="2" />
-            <text x="210" y="58" textAnchor="middle" fill="#059669" fontSize="10" fontFamily="monospace" fontWeight="bold">INTAKE</text>
-            <text x="210" y="92" textAnchor="middle" fill="#64748b" fontSize="10" fontFamily="monospace">Submit</text>
+            {/* Dynamic Step Nodes */}
+            {latencySteps.map((step, idx) => {
+              const cx = 70 + idx * stepSpacing;
+              const isSelected = activeSelectedStep?.id === step.id;
+              const isBottleneck = !isResolvedMode && step.isBottleneck;
+              const isDecision = step.type === 'decisionNode' || step.category === 'decision';
+              const isTrigger = idx === 0 || step.type === 'triggerNode';
+              const isDone = idx === latencySteps.length - 1;
 
-            {/* Node 3: KYC Verification */}
-            <g
-              onClick={() => setSelectedBottleneckId('kyc')}
-              className="cursor-pointer group"
-            >
-              <rect
-                x="340"
-                y="35"
-                width="60"
-                height="40"
-                rx="10"
-                className={activeBottlenecks > 0 ? 'animate-heatmap-pulse' : ''}
-                fill={activeBottlenecks > 0 ? '#f43f5e' : '#059669'}
-                fillOpacity={activeBottlenecks > 0 ? '0.4' : '0.2'}
-                stroke={activeBottlenecks > 0 ? '#f43f5e' : '#059669'}
-                strokeWidth="2.5"
-              />
-              <text x="370" y="58" textAnchor="middle" fill={activeBottlenecks > 0 ? '#f43f5e' : '#059669'} fontSize="10" fontFamily="monospace" fontWeight="bold">
-                {activeBottlenecks > 0 ? '🔥 KYC' : '✔ KYC'}
-              </text>
-              <text x="370" y="92" textAnchor="middle" fill={activeBottlenecks > 0 ? '#f43f5e' : '#64748b'} fontSize="10" fontFamily="monospace">
-                Verify (4.5h)
-              </text>
-            </g>
+              // Node badge text
+              const badge = isTrigger ? 'INIT' : isDecision ? 'GATE' : isDone ? 'DONE' : step.category === 'document' ? 'DOC' : 'EXEC';
+              const nodeColor = isBottleneck ? '#f43f5e' : isDecision ? '#d97706' : isTrigger ? '#3b82f6' : isDone ? '#059669' : '#00b4d8';
 
-            {/* Node 4: Underwriting */}
-            <rect x="500" y="35" width="60" height="40" rx="10" fill="#059669" fillOpacity="0.2" stroke="#059669" strokeWidth="2" />
-            <text x="530" y="58" textAnchor="middle" fill="#059669" fontSize="10" fontFamily="monospace" fontWeight="bold">RISK</text>
-            <text x="530" y="92" textAnchor="middle" fill="#64748b" fontSize="10" fontFamily="monospace">Underwrite</text>
+              return (
+                <g
+                  key={step.id || idx}
+                  onClick={() => {
+                    setSelectedStepId(step.id);
+                    if (onFocusNode) onFocusNode(step.id);
+                  }}
+                  className="cursor-pointer group"
+                >
+                  {/* Selection highlight aura */}
+                  {isSelected && (
+                    <circle
+                      cx={cx}
+                      cy="55"
+                      r="32"
+                      fill="none"
+                      stroke="#00b4d8"
+                      strokeWidth="2"
+                      strokeDasharray="4, 4"
+                      className="animate-spin"
+                    />
+                  )}
 
-            {/* Node 5: Manager Sign-Off */}
-            <g
-              onClick={() => setSelectedBottleneckId('manager')}
-              className="cursor-pointer group"
-            >
-              <rect
-                x="640"
-                y="35"
-                width="60"
-                height="40"
-                rx="10"
-                className={activeBottlenecks > 0 ? 'animate-heatmap-pulse' : ''}
-                fill={activeBottlenecks > 0 ? '#d97706' : '#059669'}
-                fillOpacity={activeBottlenecks > 0 ? '0.4' : '0.2'}
-                stroke={activeBottlenecks > 0 ? '#d97706' : '#059669'}
-                strokeWidth="2.5"
-              />
-              <text x="670" y="58" textAnchor="middle" fill={activeBottlenecks > 0 ? '#d97706' : '#059669'} fontSize="10" fontFamily="monospace" fontWeight="bold">
-                {activeBottlenecks > 0 ? '🔥 APPR' : '✔ APPR'}
-              </text>
-              <text x="670" y="92" textAnchor="middle" fill={activeBottlenecks > 0 ? '#d97706' : '#64748b'} fontSize="10" fontFamily="monospace">
-                Sign-off (3.8h)
-              </text>
-            </g>
+                  {/* Node Shape */}
+                  {isDecision ? (
+                    <rect
+                      x={cx - 30}
+                      y="25"
+                      width="60"
+                      height="60"
+                      rx="12"
+                      transform={`rotate(45 ${cx} 55)`}
+                      fill={nodeColor}
+                      fillOpacity={isBottleneck ? 0.4 : 0.2}
+                      stroke={nodeColor}
+                      strokeWidth={isSelected ? '3' : '2'}
+                      className={isBottleneck ? 'animate-heatmap-pulse' : ''}
+                    />
+                  ) : (
+                    <rect
+                      x={cx - 32}
+                      y="35"
+                      width="64"
+                      height="40"
+                      rx="12"
+                      fill={nodeColor}
+                      fillOpacity={isBottleneck ? 0.4 : 0.2}
+                      stroke={nodeColor}
+                      strokeWidth={isSelected ? '3' : '2'}
+                      className={isBottleneck ? 'animate-heatmap-pulse' : ''}
+                    />
+                  )}
+
+                  {/* Badge Text */}
+                  <text
+                    x={cx}
+                    y="59"
+                    textAnchor="middle"
+                    fill={nodeColor}
+                    fontSize="10"
+                    fontFamily="monospace"
+                    fontWeight="bold"
+                  >
+                    {isBottleneck ? `🔥 ${badge}` : `✔ ${badge}`}
+                  </text>
+
+                  {/* Node Label (Truncated) */}
+                  <text
+                    x={cx}
+                    y="94"
+                    textAnchor="middle"
+                    fill={isBottleneck ? '#f43f5e' : '#64748b'}
+                    fontSize="10"
+                    fontFamily="monospace"
+                    fontWeight={isSelected ? 'bold' : 'normal'}
+                  >
+                    {step.name.length > 12 ? `${step.name.substring(0, 11)}…` : step.name}
+                  </text>
+
+                  {/* Latency Tag */}
+                  <text
+                    x={cx}
+                    y="106"
+                    textAnchor="middle"
+                    fill={isBottleneck ? '#f43f5e' : '#94a3b8'}
+                    fontSize="9"
+                    fontFamily="monospace"
+                  >
+                    {isResolvedMode ? `${step.toBeHours}h` : `${step.asIsHours}h`}
+                  </text>
+                </g>
+              );
+            })}
           </svg>
         </div>
+
+        {/* Selected Step AI Bottleneck Mitigation Card */}
+        {activeSelectedStep && (
+          <motion.div
+            key={activeSelectedStep.id}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`p-5 rounded-2xl border transition-all ${
+              activeSelectedStep.isBottleneck && !isResolvedMode
+                ? 'bg-[#f43f5e]/10 border-[#f43f5e]/40 shadow-[0_0_20px_rgba(244,63,94,0.15)]'
+                : 'bg-[#00b4d8]/10 border-[#00b4d8]/40 shadow-[0_0_20px_rgba(0,180,216,0.15)]'
+            }`}
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
+                    activeSelectedStep.isBottleneck && !isResolvedMode
+                      ? 'bg-[#f43f5e]/20 text-[#f43f5e] border border-[#f43f5e]/30'
+                      : 'bg-[#00b4d8]/20 text-[#00b4d8] border border-[#00b4d8]/30'
+                  }`}>
+                    {activeSelectedStep.isBottleneck && !isResolvedMode ? '🔥 ACTIVE LATENCY BOTTLENECK' : '✔ STEP DIAGNOSTIC'}
+                  </span>
+                  <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
+                    ID: {activeSelectedStep.id}
+                  </span>
+                </div>
+                <h4 className="text-base font-bold text-[#0f172a] dark:text-[#e8edf5] font-display">
+                  {activeSelectedStep.name}
+                </h4>
+                <p className="text-xs text-slate-600 dark:text-slate-300">
+                  {activeSelectedStep.category === 'decision'
+                    ? 'Manual conditional branch causes asynchronous human review queue delays.'
+                    : activeSelectedStep.category === 'document'
+                    ? 'Document ingestion & payload formatting requires straight-through automated parsing.'
+                    : activeSelectedStep.category === 'actor'
+                    ? 'Inter-departmental stakeholder handoff introduces manual scheduling latency.'
+                    : 'Process operation step optimized for straight-through asynchronous worker execution.'}
+                </p>
+              </div>
+
+              {/* Latency Recovery Metric & Actions */}
+              <div className="flex flex-wrap items-center gap-3 shrink-0">
+                <div className="text-right font-mono">
+                  <div className="text-xs text-slate-500 dark:text-slate-400">Latency:</div>
+                  <div className="text-sm font-bold text-[#0f172a] dark:text-[#e8edf5]">
+                    <span className="text-[#f43f5e] line-through mr-1">{activeSelectedStep.asIsHours}h</span>
+                    <span className="text-[#059669]">→ {activeSelectedStep.toBeHours}h</span>
+                  </div>
+                </div>
+
+                {onFocusNode && (
+                  <button
+                    type="button"
+                    onClick={() => onFocusNode(activeSelectedStep.id)}
+                    className="button-scale px-3 py-2 rounded-xl text-xs font-mono font-bold bg-white dark:bg-white/[0.08] border border-slate-200 dark:border-white/[0.15] text-[#0f172a] dark:text-[#e8edf5] hover:border-[#00b4d8] transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  >
+                    <Crosshair className="w-3.5 h-3.5 text-[#00b4d8]" />
+                    <span>Focus in Canvas</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setIsResolvedMode(!isResolvedMode)}
+                  className="button-scale px-3 py-2 rounded-xl text-xs font-mono font-bold bg-[#00b4d8]/20 border border-[#00b4d8]/50 text-[#00b4d8] hover:bg-[#00b4d8]/30 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                >
+                  <Zap className="w-3.5 h-3.5 text-[#00b4d8]" />
+                  <span>{isResolvedMode ? 'Revert Simulation' : 'Auto-Optimize Step'}</span>
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* 0 Latency Hotspots State */}
         {activeBottlenecks === 0 && (
@@ -605,12 +818,11 @@ export const ProcessAnalytics: React.FC<ProcessAnalyticsProps> = ({ workflow, on
                   0 Latency Hotspots • Fully Optimized STP
                 </h4>
                 <p className="text-xs text-slate-600 dark:text-slate-300 font-mono">
-                  All critical-path queues streamlined. Straight-Through Processing active with automated fallback routing.
+                  All critical-path queues streamlined for <span className="font-bold text-[#059669]">{workflow.workflowName || workflow.title}</span>. Straight-Through Processing active with automated fallback routing.
                 </p>
               </div>
             </div>
 
-            {/* Gradient Badge: 100% */}
             <div className="px-4 py-2 rounded-full bg-[#059669]/20 border border-[#059669]/50 text-[#059669] font-mono text-xs font-bold shrink-0">
               100% DAG PASS
             </div>
