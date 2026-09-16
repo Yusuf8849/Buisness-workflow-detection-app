@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sparkles, Terminal, Database, Zap, Loader2, ArrowRight, CheckCircle2, Play, Cpu, RefreshCw, Layers } from 'lucide-react';
+import { Sparkles, Terminal, Database, Zap, Loader2, ArrowRight, CheckCircle2, Play, Cpu, RefreshCw, Layers, PenLine } from 'lucide-react';
 import { WorkflowTemplate } from '../../types/workflow';
 import { INITIAL_DEMO_TEXT } from '../../services/mockData';
 
@@ -30,6 +30,7 @@ export const ProcessInputArea: React.FC<ProcessInputAreaProps> = ({
 }) => {
   const [inputText, setInputText] = useState<string>(INITIAL_DEMO_TEXT);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('scenario-a-order-placed');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   
   // Terminal log streaming state
   const [visibleLogs, setVisibleLogs] = useState<string[]>([]);
@@ -79,11 +80,30 @@ export const ProcessInputArea: React.FC<ProcessInputAreaProps> = ({
     };
   }, [isAnalyzing]);
 
+  const handleCustomSelect = () => {
+    setSelectedTemplateId('custom');
+    setInputText('');
+    setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 50);
+  };
+
   const handleTemplateSelect = (tpl: WorkflowTemplate) => {
     setSelectedTemplateId(tpl.id);
     setInputText(tpl.rawInput);
     if (tpl.projectName) {
       onProjectChange(tpl.projectName);
+    }
+  };
+
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    setInputText(val);
+    const matchingTpl = templates.find(t => t.rawInput.trim() === val.trim());
+    if (matchingTpl) {
+      setSelectedTemplateId(matchingTpl.id);
+    } else {
+      setSelectedTemplateId('custom');
     }
   };
 
@@ -106,7 +126,7 @@ export const ProcessInputArea: React.FC<ProcessInputAreaProps> = ({
             Business Process Detection
           </h2>
           <p className="text-xs sm:text-sm text-slate-300">
-            Paste natural language procedures. AI automatically discovers schemas, actions, conditions, and DAG topology.
+            Paste natural language procedures or start from a blank slate. AI automatically discovers schemas, actions, conditions, and DAG topology.
           </p>
         </div>
 
@@ -138,10 +158,15 @@ export const ProcessInputArea: React.FC<ProcessInputAreaProps> = ({
         {/* Large Centered Text Area */}
         <div className="relative group">
           <textarea
+            ref={textareaRef}
             value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
+            onChange={handleTextChange}
             rows={6}
-            placeholder="Paste your business workflow description here..."
+            placeholder={
+              selectedTemplateId === 'custom'
+                ? "Type or paste your custom business workflow description here (e.g. When an employee submits an expense receipt, Manager reviews the claim. If amount > $500, Finance Director approval is required, then disburse wire payment...)"
+                : "Paste your business workflow description here..."
+            }
             className="w-full p-5 sm:p-6 rounded-2xl bg-[#0a0e1a]/90 border border-white/[0.08] focus:border-[#00d4ff] focus:ring-4 focus:ring-[#00d4ff]/20 focus:shadow-[0_0_35px_rgba(0,212,255,0.35)] text-[#e8edf5] text-sm sm:text-base font-mono leading-relaxed transition-all duration-300 placeholder:text-slate-500 outline-none resize-y"
           />
 
@@ -161,6 +186,21 @@ export const ProcessInputArea: React.FC<ProcessInputAreaProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
+            {/* 1. Custom (Blank Slate) Pill - FIRST option in the row */}
+            <button
+              type="button"
+              onClick={handleCustomSelect}
+              className={`px-4 py-2 rounded-2xl text-xs font-mono font-medium transition-all duration-200 border flex items-center gap-2 cursor-pointer ${
+                selectedTemplateId === 'custom'
+                  ? 'bg-[#00d4ff]/20 border-[#00d4ff] text-[#00d4ff] shadow-[0_0_20px_rgba(0,212,255,0.3)] font-bold'
+                  : 'bg-white/[0.04] border-white/[0.08] text-slate-300 hover:text-[#e8edf5] hover:border-white/[0.2] hover:bg-white/[0.07]'
+              }`}
+            >
+              <PenLine className="w-3.5 h-3.5 text-[#00d4ff]" />
+              <span>Custom (Blank Slate)</span>
+            </button>
+
+            {/* Existing Scenarios */}
             {templates.map((tpl) => {
               const isSelected = selectedTemplateId === tpl.id;
               const isScenarioA = tpl.id.includes('scenario-a');
