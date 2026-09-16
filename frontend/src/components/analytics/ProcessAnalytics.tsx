@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Workflow, CustomWorkflowNode } from '../../types/workflow';
+import { NLPWorkflowEngine, NormalizedLatencyStep } from '../../utils/nlpWorkflowEngine';
 import {
   ResponsiveContainer,
   RadarChart,
@@ -29,7 +30,8 @@ import {
   Check,
   RefreshCw,
   Lightbulb,
-  Crosshair
+  Crosshair,
+  Info
 } from 'lucide-react';
 import { AnimatedCounter } from '../common/AnimatedCounter';
 
@@ -48,8 +50,8 @@ export const ProcessAnalytics: React.FC<ProcessAnalyticsProps> = ({ workflow, on
   // Target Health Score
   const targetScore = isResolvedMode ? 98 : (workflow.healthScore?.overall || 96);
 
-  // 1. DYNAMIC LATENCY STEPS: Generated directly from detected workflow nodes
-  const latencySteps = useMemo(() => {
+  // 1. DYNAMIC & NORMALIZED LATENCY STEPS: Short names + realistic varied latencies
+  const latencySteps: NormalizedLatencyStep[] = useMemo(() => {
     const rawNodes: CustomWorkflowNode[] = workflow.nodes && workflow.nodes.length > 0
       ? workflow.nodes
       : (workflow.steps || []).map((s, idx) => ({
@@ -60,6 +62,7 @@ export const ProcessAnalytics: React.FC<ProcessAnalyticsProps> = ({ workflow, on
             label: s.name,
             name: s.name,
             title: s.name,
+            rawText: s.description || s.name,
             category: s.actionType,
             actionType: s.actionType
           }
@@ -67,52 +70,14 @@ export const ProcessAnalytics: React.FC<ProcessAnalyticsProps> = ({ workflow, on
 
     if (!rawNodes || rawNodes.length === 0) {
       return [
-        { id: 'step_1', name: 'Trigger Event', asIsHours: 0.8, toBeHours: 0.05, reduction: '-94%', isBottleneck: false, type: 'triggerNode', category: 'trigger' },
-        { id: 'step_2', name: 'Process Execution', asIsHours: 2.5, toBeHours: 0.2, reduction: '-92%', isBottleneck: false, type: 'actionNode', category: 'action' },
-        { id: 'step_3', name: 'Validation & Approval', asIsHours: 4.2, toBeHours: 0.25, reduction: '-94%', isBottleneck: true, type: 'decisionNode', category: 'decision' },
-        { id: 'step_4', name: 'Workflow Completion', asIsHours: 1.5, toBeHours: 0.1, reduction: '-93%', isBottleneck: false, type: 'completionNode', category: 'completion' }
+        { id: 'step_1', name: 'Submit Request', rawText: 'User initiates intake event', asIsHours: 0.6, toBeHours: 0.05, reduction: '-92%', isBottleneck: false, type: 'triggerNode', category: 'trigger' },
+        { id: 'step_2', name: 'Validate Policy', rawText: 'Validate schema rules & compliance', asIsHours: 2.4, toBeHours: 0.2, reduction: '-92%', isBottleneck: false, type: 'actionNode', category: 'action' },
+        { id: 'step_3', name: 'Manager Approval', rawText: 'Manager reviews claim and approves funds', asIsHours: 7.2, toBeHours: 0.45, reduction: '-94%', isBottleneck: true, type: 'decisionNode', category: 'decision' },
+        { id: 'step_4', name: 'Complete Process', rawText: 'Dispatch wire and finalize transaction', asIsHours: 1.5, toBeHours: 0.1, reduction: '-93%', isBottleneck: false, type: 'completionNode', category: 'completion' }
       ];
     }
 
-    return rawNodes.map((node, idx) => {
-      const label = String(node.data?.label || node.data?.name || node.data?.title || `Step ${idx + 1}`);
-      const lower = label.toLowerCase();
-      const nodeType = String(node.type || '').toLowerCase();
-      const isDecision = nodeType.includes('decision') || node.data?.category === 'decision' || /if|check|verify|approval|review|valid|score|policy|whether/i.test(lower);
-      const isDoc = nodeType.includes('document') || /document|payload|kyc|receipt|invoice|record|file|data/i.test(lower);
-      const isActor = nodeType.includes('actor') || /notif|manager|vendor|customer|employee|director|lead|stakeholder/i.test(lower);
-      const isTrigger = nodeType.includes('trigger') || idx === 0;
-
-      // Realistic latency estimation based on step characteristics
-      let asIsHours = 1.6 + ((idx * 3) % 4) * 0.3;
-      if (isDecision) {
-        asIsHours = 3.8 + (idx % 2 === 0 ? 0.7 : 0.4);
-      } else if (isDoc) {
-        asIsHours = 2.3 + (idx % 2 === 0 ? 0.4 : 0.2);
-      } else if (isActor) {
-        asIsHours = 3.2 + (idx % 2 === 0 ? 0.6 : 0.3);
-      } else if (isTrigger) {
-        asIsHours = 0.8;
-      }
-
-      asIsHours = Number(asIsHours.toFixed(1));
-      let toBeHours = Number((asIsHours * 0.07).toFixed(2));
-      if (toBeHours < 0.08) toBeHours = 0.08;
-
-      const reductionPct = Math.round(((asIsHours - toBeHours) / asIsHours) * 100);
-      const isBottleneck = node.data?.isBottleneck ?? (asIsHours >= 3.0 || isDecision);
-
-      return {
-        id: node.id,
-        name: label,
-        asIsHours,
-        toBeHours,
-        reduction: `-${reductionPct}%`,
-        isBottleneck,
-        type: node.type || (isDecision ? 'decisionNode' : 'actionNode'),
-        category: isDecision ? 'decision' : isDoc ? 'document' : isActor ? 'actor' : isTrigger ? 'trigger' : 'action'
-      };
-    });
+    return rawNodes.map((node, idx) => NLPWorkflowEngine.calculateStepLatency(node, idx));
   }, [workflow]);
 
   // Aggregate metrics derived dynamically from latencySteps
@@ -122,7 +87,7 @@ export const ProcessAnalytics: React.FC<ProcessAnalyticsProps> = ({ workflow, on
   const overallReductionPct = totalAsIsHours > 0 ? Math.round(((totalAsIsHours - totalToBeHours) / totalAsIsHours) * 100) : 94;
   const maxLatencyHours = useMemo(() => Math.max(5.0, ...latencySteps.map(s => s.asIsHours)), [latencySteps]);
 
-  // Active Bottleneck Count
+  // Active Bottlenecks: Strictly calibrated to real human queues and high latency steps
   const activeBottlenecks = isResolvedMode ? 0 : latencySteps.filter(s => s.isBottleneck).length;
 
   // Selected Step for Detailed Bottleneck / Node Inspection
@@ -184,8 +149,8 @@ export const ProcessAnalytics: React.FC<ProcessAnalyticsProps> = ({ workflow, on
     actorCount: workflow.actors?.length || workflow.metrics?.actorCount || 2,
     decisionCount: workflow.nodes?.filter(n => n.type === 'decisionNode' || n.data?.category === 'decision').length || workflow.metrics?.decisionCount || latencySteps.filter(s => s.isBottleneck).length,
     relationshipCount: workflow.edges?.length || workflow.metrics?.relationshipCount || (latencySteps.length > 0 ? latencySteps.length - 1 : 0),
-    estimatedCycleTime: isResolvedMode ? `${totalToBeHours} hours` : (workflow.metrics?.estimatedCycleTime || `${totalAsIsHours} hours`),
-    manualHandoffs: isResolvedMode ? 0 : (workflow.metrics?.manualHandoffs || Math.max(1, Math.floor(latencySteps.length / 2)))
+    estimatedCycleTime: isResolvedMode ? `${totalToBeHours} hours` : `${totalAsIsHours} hours`,
+    manualHandoffs: isResolvedMode ? 0 : activeBottlenecks
   };
 
   // 5 Dynamic Radar Dimensions
@@ -193,7 +158,7 @@ export const ProcessAnalytics: React.FC<ProcessAnalyticsProps> = ({ workflow, on
     { subject: 'Clarity', score: workflow.healthScore?.clarity || 94, fullMark: 100, desc: 'Unambiguous action semantics' },
     { subject: 'Ownership', score: workflow.healthScore?.ownershipClarity || 96, fullMark: 100, desc: 'Clear stakeholder mapping' },
     { subject: 'Efficiency', score: isResolvedMode ? 98 : (workflow.healthScore?.efficiency || 91), fullMark: 100, desc: 'Minimal latency queues' },
-    { subject: 'Automation', score: isResolvedMode ? 96 : Math.max(75, 100 - (workflow.healthScore?.manualDependency || 10)), fullMark: 100, desc: 'Straight-through APIs' },
+    { subject: 'Automation', score: isResolvedMode ? 96 : Math.max(75, 100 - (activeBottlenecks * 8)), fullMark: 100, desc: 'Straight-through APIs' },
     { subject: 'Decision Complexity', score: workflow.healthScore?.decisionComplexity || 84, fullMark: 100, desc: 'Deterministic branch rules' },
   ];
 
@@ -314,7 +279,7 @@ export const ProcessAnalytics: React.FC<ProcessAnalyticsProps> = ({ workflow, on
             <AnimatedCounter value={activeBottlenecks} />
           </div>
           <span className={`inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${activeBottlenecks > 0 ? 'text-[#e11d48] bg-[#e11d48]/10 border border-[#e11d48]/30' : 'text-[#059669] bg-[#059669]/10 border border-[#059669]/30'}`}>
-            {activeBottlenecks > 0 ? 'Requires Attention' : <><Check className="w-3 h-3 text-[#059669]" /> 0 Hotspots</>}
+            {activeBottlenecks > 0 ? `${activeBottlenecks} Critical Queues` : <><Check className="w-3 h-3 text-[#059669]" /> 0 Hotspots</>}
           </span>
         </div>
       </div>
@@ -482,7 +447,7 @@ export const ProcessAnalytics: React.FC<ProcessAnalyticsProps> = ({ workflow, on
         </div>
       </div>
 
-      {/* Row 2: Dynamic Step-Level Latency Comparison */}
+      {/* Row 2: Dynamic Step-Level Latency Comparison (Short Names + Realistic Rates) */}
       <div className="glass-card p-6 sm:p-8 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-white/[0.08] pb-4">
           <div className="flex items-center gap-2">
@@ -521,17 +486,20 @@ export const ProcessAnalytics: React.FC<ProcessAnalyticsProps> = ({ workflow, on
                   setSelectedStepId(step.id);
                   if (onFocusNode) onFocusNode(step.id);
                 }}
-                className={`p-4 rounded-2xl border transition-all space-y-2.5 card-lift shadow-sm cursor-pointer ${
+                className={`p-4 rounded-2xl border transition-all space-y-2 card-lift shadow-sm cursor-pointer ${
                   isSelected
                     ? 'bg-[#00b4d8]/10 border-[#00b4d8] shadow-[0_0_20px_rgba(0,180,216,0.2)]'
                     : 'bg-white dark:bg-white/[0.03] border-slate-200 dark:border-white/[0.08] hover:border-[#00b4d8]/40'
                 }`}
               >
-                {/* Row Header */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                {/* Row Header: Clean Short Step Name + Badges */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs font-mono font-bold text-slate-400">0{idx + 1}.</span>
-                    <span className="text-xs sm:text-sm font-bold text-[#0f172a] dark:text-[#e8edf5] font-display">
+                    <span
+                      className="text-xs sm:text-sm font-bold text-[#0f172a] dark:text-[#e8edf5] font-display"
+                      title={step.rawText || step.name}
+                    >
                       {step.name}
                     </span>
                     {step.isBottleneck && activeBottlenecks > 0 && (
@@ -542,11 +510,21 @@ export const ProcessAnalytics: React.FC<ProcessAnalyticsProps> = ({ workflow, on
                   </div>
 
                   {/* Percentage Reduction Floating Badge */}
-                  <span className="px-3 py-1 rounded-full bg-[#059669]/15 border border-[#059669]/30 text-[#059669] text-xs font-mono font-bold flex items-center gap-1 shadow-sm">
+                  <span className="px-3 py-1 rounded-full bg-[#059669]/15 border border-[#059669]/30 text-[#059669] text-xs font-mono font-bold flex items-center gap-1 shadow-sm shrink-0">
                     <TrendingDown className="w-3.5 h-3.5" />
                     <span>{step.reduction} Latency</span>
                   </span>
                 </div>
+
+                {/* Subtitle: Full Raw Text Fragment as Tooltip/Context Preview */}
+                {step.rawText && step.rawText !== step.name && (
+                  <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 truncate pl-6 font-sans">
+                    <Info className="w-3 h-3 shrink-0 text-slate-400" />
+                    <span className="truncate" title={step.rawText}>
+                      {step.rawText}
+                    </span>
+                  </div>
+                )}
 
                 {/* Bars Comparison */}
                 <div className="space-y-2 pt-1 font-mono text-[11px]">
@@ -556,7 +534,7 @@ export const ProcessAnalytics: React.FC<ProcessAnalyticsProps> = ({ workflow, on
                     <div className="flex-1 bg-slate-100 dark:bg-white/[0.04] h-4 rounded-full overflow-hidden p-0.5 border border-slate-200 dark:border-white/[0.06]">
                       <div
                         className="h-full rounded-full bg-gradient-to-r from-[#f43f5e] to-[#f59e0b] transition-all duration-1000 shadow-[0_0_10px_rgba(244,63,94,0.3)] animate-bar-crumble"
-                        style={{ width: `${asIsPct}%` }}
+                        style={{ width: `${Math.max(asIsPct, 3)}%` }}
                       />
                     </div>
                     <span className="w-16 text-right font-bold text-[#f43f5e] shrink-0">
@@ -570,7 +548,7 @@ export const ProcessAnalytics: React.FC<ProcessAnalyticsProps> = ({ workflow, on
                     <div className="flex-1 bg-slate-100 dark:bg-white/[0.04] h-4 rounded-full overflow-hidden p-0.5 border border-slate-200 dark:border-white/[0.06]">
                       <div
                         className="h-full rounded-full bg-gradient-to-r from-[#059669] to-[#00b4d8] transition-all duration-1000 shadow-[0_0_10px_rgba(5,150,105,0.3)]"
-                        style={{ width: `${Math.max(toBePct, 4)}%` }}
+                        style={{ width: `${Math.max(toBePct, 3)}%` }}
                       />
                     </div>
                     <span className="w-16 text-right font-bold text-[#059669] shrink-0">
@@ -645,6 +623,8 @@ export const ProcessAnalytics: React.FC<ProcessAnalyticsProps> = ({ workflow, on
                   }}
                   className="cursor-pointer group"
                 >
+                  <title>{step.rawText || step.name}</title>
+
                   {/* Selection highlight aura */}
                   {isSelected && (
                     <circle
@@ -702,7 +682,7 @@ export const ProcessAnalytics: React.FC<ProcessAnalyticsProps> = ({ workflow, on
                     {isBottleneck ? `🔥 ${badge}` : `✔ ${badge}`}
                   </text>
 
-                  {/* Node Label (Truncated) */}
+                  {/* Clean Short Node Label (Truncated if necessary) */}
                   <text
                     x={cx}
                     y="94"
@@ -712,7 +692,7 @@ export const ProcessAnalytics: React.FC<ProcessAnalyticsProps> = ({ workflow, on
                     fontFamily="monospace"
                     fontWeight={isSelected ? 'bold' : 'normal'}
                   >
-                    {step.name.length > 12 ? `${step.name.substring(0, 11)}…` : step.name}
+                    {step.name.length > 14 ? `${step.name.substring(0, 13)}…` : step.name}
                   </text>
 
                   {/* Latency Tag */}
@@ -761,9 +741,14 @@ export const ProcessAnalytics: React.FC<ProcessAnalyticsProps> = ({ workflow, on
                 <h4 className="text-base font-bold text-[#0f172a] dark:text-[#e8edf5] font-display">
                   {activeSelectedStep.name}
                 </h4>
+                {activeSelectedStep.rawText && activeSelectedStep.rawText !== activeSelectedStep.name && (
+                  <p className="text-xs text-slate-500 dark:text-slate-400 italic font-mono">
+                    "{activeSelectedStep.rawText}"
+                  </p>
+                )}
                 <p className="text-xs text-slate-600 dark:text-slate-300">
                   {activeSelectedStep.category === 'decision'
-                    ? 'Manual conditional branch causes asynchronous human review queue delays.'
+                    ? 'Manual conditional branch causes asynchronous human review queue delays. Recommended: threshold-based auto-approval.'
                     : activeSelectedStep.category === 'document'
                     ? 'Document ingestion & payload formatting requires straight-through automated parsing.'
                     : activeSelectedStep.category === 'actor'
