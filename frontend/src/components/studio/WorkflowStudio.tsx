@@ -55,6 +55,23 @@ interface WorkflowStudioProps {
   highlightNodeId?: string | null;
 }
 
+// Statically declare custom node and edge types for ReactFlow
+const NODE_TYPES = {
+  triggerNode: TriggerNode,
+  actionNode: ActionNode,
+  decisionNode: DecisionNode,
+  completionNode: CompletionNode,
+  actorNode: ActorNode,
+  documentNode: DocumentNode,
+  milestoneNode: MilestoneNode,
+};
+
+const EDGE_TYPES = {
+  animatedFlowEdge: AnimatedFlowEdge,
+  smoothstep: AnimatedFlowEdge,
+  default: AnimatedFlowEdge,
+};
+
 // Inner Canvas Component to leverage ReactFlow hooks
 const WorkflowStudioInner: React.FC<WorkflowStudioProps> = ({
   workflow,
@@ -214,29 +231,6 @@ const WorkflowStudioInner: React.FC<WorkflowStudioProps> = ({
       );
     }
   }, [highlightNodeId]);
-
-  // Register Custom Node Types & Animated Edges
-  const nodeTypes = useMemo(
-    () => ({
-      triggerNode: TriggerNode,
-      actionNode: ActionNode,
-      decisionNode: DecisionNode,
-      completionNode: CompletionNode,
-      actorNode: ActorNode,
-      documentNode: DocumentNode,
-      milestoneNode: MilestoneNode,
-    }),
-    []
-  );
-
-  const edgeTypes = useMemo(
-    () => ({
-      animatedFlowEdge: AnimatedFlowEdge,
-      smoothstep: AnimatedFlowEdge,
-      default: AnimatedFlowEdge,
-    }),
-    []
-  );
 
   // Real-Time Canvas Cursor Movement Broadcast
   const handleCanvasMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -540,8 +534,8 @@ const WorkflowStudioInner: React.FC<WorkflowStudioProps> = ({
             onEdgeClick={onEdgeClick}
             onNodeMouseEnter={onNodeMouseEnter}
             onNodeMouseLeave={onNodeMouseLeave}
-            nodeTypes={nodeTypes}
-            edgeTypes={edgeTypes}
+            nodeTypes={NODE_TYPES}
+            edgeTypes={EDGE_TYPES}
             onInit={setRfInstance}
             snapToGrid={true}
             snapGrid={[15, 15]}
