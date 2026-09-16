@@ -1,9 +1,12 @@
-import React, { lazy, Suspense, useState, useEffect, useRef } from 'react';
+import React, { lazy, Suspense, useState, useEffect, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { AnimatedCounter } from '../common/AnimatedCounter';
 import { Sparkles, ArrowRight, Play, CheckCircle2, ShieldCheck, Zap, Layers, Activity, Cpu, Network } from 'lucide-react';
 import { ParticleText } from '../common/ParticleText';
+
+import { Workflow } from '../../types/workflow';
+import { NLPWorkflowEngine } from '../../utils/nlpWorkflowEngine';
 
 const LazyThreeDScene = lazy(() => import('../common/ThreeDScene'));
 const LazyHero3DCanvas = lazy(() => import('./Hero3DCanvas'));
@@ -12,6 +15,7 @@ interface LandingHeroProps {
   onDiscoverClick: () => void;
   onOpenDemo: () => void;
   onOpenStudio: () => void;
+  workflow?: Workflow;
 }
 
 interface Ripple {
@@ -23,11 +27,16 @@ interface Ripple {
 export const LandingHero: React.FC<LandingHeroProps> = ({
   onDiscoverClick,
   onOpenDemo,
-  onOpenStudio
+  onOpenStudio,
+  workflow
 }) => {
   const [viewMode, setViewMode] = useState<'neural' | 'chaos'>('neural');
   const [ripples, setRipples] = useState<Ripple[]>([]);
   const buttonRef = useRef<HTMLButtonElement>(null);
+
+  const sceneNodes = useMemo(() => {
+    return NLPWorkflowEngine.workflowToSceneNodes(workflow);
+  }, [workflow]);
 
   // Cinematic Typewriter Effect for Subtitle
   const fullSubtitle = "AI that discovers hidden business workflows inside messy natural language, SOP documents, and procedures — and transforms them into interactive process diagrams.";
@@ -247,7 +256,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
         </div>
       }>
         {viewMode === 'neural' ? (
-          <LazyThreeDScene />
+          <LazyThreeDScene customNodes={sceneNodes} />
         ) : (
           <LazyHero3DCanvas />
         )}

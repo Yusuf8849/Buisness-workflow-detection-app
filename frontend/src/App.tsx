@@ -2,7 +2,7 @@ import React, { useState, useEffect, lazy, Suspense, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Workflow, WorkflowTemplate, ProjectContext } from './types/workflow';
 import { api } from './services/api';
-import { DEFAULT_MOCK_WORKFLOW, MOCK_TEMPLATES, DEFAULT_PROJECT_CONTEXT } from './services/mockData';
+import { DEFAULT_MOCK_WORKFLOW, MOCK_TEMPLATES, DEFAULT_PROJECT_CONTEXT, INITIAL_DEMO_TEXT } from './services/mockData';
 import { Navbar, ActiveTab } from './components/layout/Navbar';
 import { Footer } from './components/layout/Footer';
 import { LandingHero } from './components/landing/LandingHero';
@@ -50,6 +50,7 @@ const AppContent: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isExploding, setIsExploding] = useState<boolean>(false);
   const [highlightNodeId, setHighlightNodeId] = useState<string | null>(null);
+  const [analyzingInputText, setAnalyzingInputText] = useState<string>(INITIAL_DEMO_TEXT);
 
   // Modals
   const [isDemoOpen, setIsDemoOpen] = useState<boolean>(false);
@@ -84,7 +85,7 @@ const AppContent: React.FC = () => {
           setProjectContext(ctx);
         }
       } catch (err) {
-        console.warn('Initial data load error:', err);
+        console.warn('Init fetch fallback:', err);
       } finally {
         setIsLoading(false);
       }
@@ -116,8 +117,12 @@ const AppContent: React.FC = () => {
     }
   };
 
-  // Main Detection pipeline trigger
+  // Main Detection pipeline trigger with full state reset and dynamic NLP AST parsing
   const handleAnalyze = async (requirementText: string) => {
+    // 1. Reset previous workflow detection state immediately
+    setAnalyzingInputText(requirementText);
+    setDetectedWorkflowsList([]);
+    setHighlightNodeId(null);
     setIsAnalyzing(true);
     setPipelineStage(0);
 
@@ -147,7 +152,7 @@ const AppContent: React.FC = () => {
 
         showToast({
           title: 'Workflow Successfully Discovered',
-          message: `${result.workflows?.length || 1} distinct workflows extracted with 0 cycles.`,
+          message: `${result.workflows?.length || 1} distinct workflow(s) extracted from input text with 0 cycles.`,
           type: 'success'
         });
       }, 500);
@@ -276,6 +281,7 @@ const AppContent: React.FC = () => {
                   onDiscoverClick={() => setActiveTab('discover')}
                   onOpenDemo={() => setIsDemoOpen(true)}
                   onOpenStudio={() => setActiveTab('studio')}
+                  workflow={currentWorkflow}
                 />
 
                 <SocialProofSection />
@@ -414,7 +420,8 @@ const AppContent: React.FC = () => {
                 {/* Real-time AI Processing Split-Screen Visualizer */}
                 {isAnalyzing && (
                   <RealtimeDiscoveryVisualizer
-                    rawText={currentWorkflow.rawInput || ''}
+                    rawText={analyzingInputText}
+                    workflow={currentWorkflow}
                     isAnalyzing={isAnalyzing}
                     currentStage={pipelineStage}
                   />
@@ -444,14 +451,15 @@ const AppContent: React.FC = () => {
                 {/* Interactive Realtime Discovery Sandbox when idle */}
                 {!isAnalyzing && (
                   <RealtimeDiscoveryVisualizer
-                    rawText={currentWorkflow.rawInput || ''}
+                    rawText={analyzingInputText || currentWorkflow.rawInput || ''}
+                    workflow={currentWorkflow}
                     isAnalyzing={false}
                   />
                 )}
 
                 {/* Live Token Highlighter Preview */}
                 <LiveTokenHighlighter
-                  text={currentWorkflow.rawInput || ''}
+                  text={analyzingInputText || currentWorkflow.rawInput || ''}
                   tokens={currentWorkflow.tokens}
                 />
               </motion.div>

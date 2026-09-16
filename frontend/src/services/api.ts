@@ -8,6 +8,7 @@ import {
   AgentEditProposal
 } from '../types/workflow';
 import { DEFAULT_MOCK_WORKFLOW, MOCK_TEMPLATES, MOCK_COMPARISON_DATA, DEFAULT_PROJECT_CONTEXT } from './mockData';
+import { NLPWorkflowEngine } from '../utils/nlpWorkflowEngine';
 
 const API_BASE_URL = '/workflow';
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 Minutes Cache Strategy
@@ -60,29 +61,30 @@ export const api = {
    * Detect workflows from natural language requirement and project context (Official PS11)
    */
   async detectWorkflows(projectName: string, requirement: string): Promise<{ workflows: Workflow[]; workflow: Workflow }> {
+    // 1. Try hitting backend endpoint
     try {
       const res = await fetch(`${API_BASE_URL}/detect`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ projectName, requirement })
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || `HTTP ${res.status}`);
+      if (res.ok) {
+        const data = await res.json();
+        invalidateApiCache('workflows');
+        if (data.workflows && data.workflows.length > 0) {
+          return {
+            workflows: data.workflows,
+            workflow: data.workflow || data.workflows[0]
+          };
+        }
       }
-      const data = await res.json();
-      invalidateApiCache('workflows');
-      return {
-        workflows: data.workflows || [data.workflow],
-        workflow: data.workflow || data.workflows?.[0]
-      };
     } catch (err: any) {
-      console.warn('[API] Detect call fallback:', err.message);
-      return {
-        workflows: [DEFAULT_MOCK_WORKFLOW],
-        workflow: DEFAULT_MOCK_WORKFLOW
-      };
+      console.warn('[API] Backend unreachable, utilizing local high-speed NLP AST parser:', err.message);
     }
+
+    // 2. Dynamic Real-Time NLP AST Parser (Ensures accurate dynamic parsing on Netlify / offline)
+    invalidateApiCache('workflows');
+    return NLPWorkflowEngine.detectWorkflows(requirement, projectName);
   },
 
   /**

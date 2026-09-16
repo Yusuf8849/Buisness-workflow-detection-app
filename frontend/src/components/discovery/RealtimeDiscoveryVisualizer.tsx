@@ -21,9 +21,12 @@ import {
   Bot
 } from 'lucide-react';
 import { SceneNode } from '../common/ThreeDScene';
+import { Workflow } from '../../types/workflow';
+import { NLPWorkflowEngine } from '../../utils/nlpWorkflowEngine';
 
 interface RealtimeDiscoveryVisualizerProps {
   rawText?: string;
+  workflow?: Workflow;
   isAnalyzing: boolean;
   currentStage?: number;
   onComplete?: () => void;
@@ -203,6 +206,7 @@ const ProgressiveNodeMesh: React.FC<{
 
 export const RealtimeDiscoveryVisualizer: React.FC<RealtimeDiscoveryVisualizerProps> = ({
   rawText = DEMO_TEXT,
+  workflow,
   isAnalyzing,
   onComplete
 }) => {
@@ -211,14 +215,27 @@ export const RealtimeDiscoveryVisualizer: React.FC<RealtimeDiscoveryVisualizerPr
   const [visibleNodesCount, setVisibleNodesCount] = useState<number>(2);
   const [highlightWordIndex, setHighlightWordIndex] = useState<number>(0);
 
-  const words = useMemo(() => rawText.split(/\s+/), [rawText]);
+  const dynamicNodes: SceneNode[] = useMemo(() => {
+    if (workflow && workflow.nodes && workflow.nodes.length > 0) {
+      return NLPWorkflowEngine.workflowToSceneNodes(workflow);
+    }
+    if (rawText && rawText.trim().length > 10) {
+      try {
+        const parsed = NLPWorkflowEngine.detectWorkflows(rawText);
+        return NLPWorkflowEngine.workflowToSceneNodes(parsed.workflow);
+      } catch (e) {}
+    }
+    return DISCOVERY_NODES;
+  }, [workflow, rawText]);
+
+  const words = useMemo(() => (rawText || DEMO_TEXT).split(/\s+/), [rawText]);
 
   // Real-time animation pipeline timer
   useEffect(() => {
     if (!isAnalyzing) {
       setCurrentScene(4);
       setProgress(100);
-      setVisibleNodesCount(DISCOVERY_NODES.length);
+      setVisibleNodesCount(dynamicNodes.length);
       return;
     }
 
@@ -382,7 +399,7 @@ export const RealtimeDiscoveryVisualizer: React.FC<RealtimeDiscoveryVisualizerPr
         <div className="lg:col-span-7 rounded-2xl bg-[#0a0e1a] border border-white/[0.08] relative overflow-hidden shadow-inner flex flex-col">
           <div className="absolute top-3 left-3 z-10 flex items-center gap-2 px-3 py-1 rounded-xl bg-[#0a0e1a]/90 border border-white/[0.12] text-[10px] font-mono text-[#00d4ff] backdrop-blur-md">
             <Activity className="w-3 h-3 text-[#00d4ff] animate-pulse" />
-            <span>3D DAG GRAPH: {visibleNodesCount}/{DISCOVERY_NODES.length} NODES MATERIALIZED</span>
+            <span>3D DAG GRAPH: {visibleNodesCount}/{dynamicNodes.length} NODES MATERIALIZED</span>
           </div>
 
           <div className="w-full flex-1 min-h-[350px]">
@@ -413,9 +430,9 @@ export const RealtimeDiscoveryVisualizer: React.FC<RealtimeDiscoveryVisualizerPr
               />
 
               {/* Connecting Lines for visible nodes */}
-              {DISCOVERY_NODES.slice(0, visibleNodesCount).map((node, i) => {
+              {dynamicNodes.slice(0, visibleNodesCount).map((node, i) => {
                 if (i === 0) return null;
-                const prev = DISCOVERY_NODES[i - 1];
+                const prev = dynamicNodes[i - 1];
                 return (
                   <Line
                     key={`line_${prev.id}_${node.id}`}
@@ -429,7 +446,7 @@ export const RealtimeDiscoveryVisualizer: React.FC<RealtimeDiscoveryVisualizerPr
               })}
 
               {/* Progressively Rendered 3D Nodes */}
-              {DISCOVERY_NODES.map((node, idx) => (
+              {dynamicNodes.map((node, idx) => (
                 <ProgressiveNodeMesh
                   key={node.id}
                   node={node}
